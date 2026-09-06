@@ -64,6 +64,7 @@
   function update(dt) {
     // Enemies, bullets, and scoring are implemented in later tasks.
     const clampedDt = Math.min(dt, MAX_DT);
+
     let dx = 0;
     let dy = 0;
 
