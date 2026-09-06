@@ -5,6 +5,9 @@
   const ENEMY_SPAWN_INTERVAL_MS = 1000;
   const ENEMY_RADIUS = 16;
   const ENEMY_SPEED_PX_PER_SEC = 120;
+  const BULLET_WIDTH = 4;
+  const BULLET_HEIGHT = 10;
+  const BULLET_SPEED = 480; // px/sec
   const MAX_DT_MS = 100;
 
   const state = {
@@ -13,6 +16,7 @@
     lastTime: 0,
     enemies: [],
     spawnTimer: 0,
+    bullets: [],
   };
 
   const player = {
@@ -22,6 +26,18 @@
     height: 28,
     speed: 300, // px/sec
   };
+
+  function spawnEnemy() {
+    const x = ENEMY_RADIUS + Math.random() * (state.width - 2 * ENEMY_RADIUS);
+    state.enemies.push({ x, y: -ENEMY_RADIUS, radius: ENEMY_RADIUS });
+  }
+
+  function spawnBullet() {
+    state.bullets.push({
+      x: player.x,
+      y: player.y - player.height / 2,
+    });
+  }
 
   const KEY_DIRECTIONS = {
     arrowup: 'up',
@@ -51,10 +67,12 @@
   window.addEventListener('keyup', (e) => handleKeyEvent(e, false));
   window.addEventListener('blur', () => activeDirections.clear());
 
-  function spawnEnemy() {
-    const x = ENEMY_RADIUS + Math.random() * (state.width - 2 * ENEMY_RADIUS);
-    state.enemies.push({ x, y: -ENEMY_RADIUS, radius: ENEMY_RADIUS });
-  }
+  window.addEventListener('keydown', (e) => {
+    if (e.code !== 'Space') return;
+    e.preventDefault();
+    if (e.repeat) return; // ignore OS auto-repeat; one press = one bullet
+    spawnBullet();
+  });
 
   function resize() {
     const dpr = window.devicePixelRatio || 1;
@@ -72,7 +90,7 @@
   }
 
   function update(dt) {
-    // Bullets and scoring are implemented in later tasks.
+    // Scoring is implemented in a later task.
     state.spawnTimer += dt;
     while (state.spawnTimer >= ENEMY_SPAWN_INTERVAL_MS) {
       state.spawnTimer -= ENEMY_SPAWN_INTERVAL_MS;
@@ -116,6 +134,12 @@
       state.height - halfHeight,
       Math.max(halfHeight, player.y + dy)
     );
+
+    const bulletDistance = BULLET_SPEED * (dt / 1000);
+    for (const bullet of state.bullets) {
+      bullet.y -= bulletDistance;
+    }
+    state.bullets = state.bullets.filter((b) => b.y + BULLET_HEIGHT / 2 >= 0);
   }
 
   function render() {
@@ -139,6 +163,16 @@
     ctx.lineTo(player.x + halfWidth, player.y + halfHeight);
     ctx.closePath();
     ctx.fill();
+
+    ctx.fillStyle = '#ffe066';
+    for (const bullet of state.bullets) {
+      ctx.fillRect(
+        bullet.x - BULLET_WIDTH / 2,
+        bullet.y - BULLET_HEIGHT / 2,
+        BULLET_WIDTH,
+        BULLET_HEIGHT
+      );
+    }
   }
 
   function loop(timestamp) {
