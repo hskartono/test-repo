@@ -2,6 +2,10 @@
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
 
+  const ENEMY_SPAWN_INTERVAL_MS = 1000;
+  const ENEMY_RADIUS = 16;
+  const ENEMY_SPEED_PX_PER_SEC = 120;
+
   const state = {
     width: canvas.width,
     height: canvas.height,
@@ -17,6 +21,8 @@
   };
 
   state.bullets = [];
+  state.enemies = [];
+  state.spawnTimer = 0;
 
   const BULLET_WIDTH = 4;
   const BULLET_HEIGHT = 10;
@@ -27,6 +33,11 @@
       x: player.x,
       y: player.y - player.height / 2,
     });
+  }
+
+  function spawnEnemy() {
+    const x = ENEMY_RADIUS + Math.random() * (state.width - 2 * ENEMY_RADIUS);
+    state.enemies.push({ x, y: -ENEMY_RADIUS, radius: ENEMY_RADIUS });
   }
 
   const KEY_DIRECTIONS = {
@@ -82,7 +93,6 @@
   const MAX_DT = 100; // ms; caps the movement step after a stalled/backgrounded frame
 
   function update(dt) {
-    // Enemies and scoring are implemented in later tasks.
     const clampedDt = Math.min(dt, MAX_DT);
     let dx = 0;
     let dy = 0;
@@ -119,6 +129,19 @@
       bullet.y -= bulletDistance;
     }
     state.bullets = state.bullets.filter((b) => b.y + BULLET_HEIGHT / 2 >= 0);
+
+    state.spawnTimer += clampedDt;
+    while (state.spawnTimer >= ENEMY_SPAWN_INTERVAL_MS) {
+      state.spawnTimer -= ENEMY_SPAWN_INTERVAL_MS;
+      spawnEnemy();
+    }
+
+    for (const enemy of state.enemies) {
+      enemy.y += ENEMY_SPEED_PX_PER_SEC * (clampedDt / 1000);
+    }
+    state.enemies = state.enemies.filter(
+      (enemy) => enemy.y - enemy.radius <= state.height
+    );
   }
 
   function render() {
@@ -144,6 +167,13 @@
         BULLET_WIDTH,
         BULLET_HEIGHT
       );
+    }
+
+    ctx.fillStyle = '#e74c3c';
+    for (const enemy of state.enemies) {
+      ctx.beginPath();
+      ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
 
