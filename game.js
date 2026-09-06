@@ -16,6 +16,19 @@
     speed: 300, // px/sec
   };
 
+  state.bullets = [];
+
+  const BULLET_WIDTH = 4;
+  const BULLET_HEIGHT = 10;
+  const BULLET_SPEED = 480; // px/sec
+
+  function spawnBullet() {
+    state.bullets.push({
+      x: player.x,
+      y: player.y - player.height / 2,
+    });
+  }
+
   const KEY_DIRECTIONS = {
     arrowup: 'up',
     w: 'up',
@@ -44,6 +57,13 @@
   window.addEventListener('keyup', (e) => handleKeyEvent(e, false));
   window.addEventListener('blur', () => activeDirections.clear());
 
+  window.addEventListener('keydown', (e) => {
+    if (e.code !== 'Space') return;
+    e.preventDefault();
+    if (e.repeat) return; // ignore OS auto-repeat; one press = one bullet
+    spawnBullet();
+  });
+
   function resize() {
     const dpr = window.devicePixelRatio || 1;
 
@@ -62,7 +82,7 @@
   const MAX_DT = 100; // ms; caps the movement step after a stalled/backgrounded frame
 
   function update(dt) {
-    // Enemies, bullets, and scoring are implemented in later tasks.
+    // Enemies and scoring are implemented in later tasks.
     const clampedDt = Math.min(dt, MAX_DT);
     let dx = 0;
     let dy = 0;
@@ -93,6 +113,12 @@
       state.height - halfHeight,
       Math.max(halfHeight, player.y + dy)
     );
+
+    const bulletDistance = BULLET_SPEED * (clampedDt / 1000);
+    for (const bullet of state.bullets) {
+      bullet.y -= bulletDistance;
+    }
+    state.bullets = state.bullets.filter((b) => b.y + BULLET_HEIGHT / 2 >= 0);
   }
 
   function render() {
@@ -109,6 +135,16 @@
     ctx.lineTo(player.x + halfWidth, player.y + halfHeight);
     ctx.closePath();
     ctx.fill();
+
+    ctx.fillStyle = '#ffe066';
+    for (const bullet of state.bullets) {
+      ctx.fillRect(
+        bullet.x - BULLET_WIDTH / 2,
+        bullet.y - BULLET_HEIGHT / 2,
+        BULLET_WIDTH,
+        BULLET_HEIGHT
+      );
+    }
   }
 
   function loop(timestamp) {
