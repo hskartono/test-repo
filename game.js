@@ -2,10 +2,17 @@
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
 
+  const ENEMY_SPAWN_INTERVAL_MS = 1000;
+  const ENEMY_RADIUS = 16;
+  const ENEMY_SPEED_PX_PER_SEC = 120;
+  const MAX_DT_MS = 100;
+
   const state = {
     width: canvas.width,
     height: canvas.height,
     lastTime: 0,
+    enemies: [],
+    spawnTimer: 0,
   };
 
   const player = {
@@ -44,6 +51,11 @@
   window.addEventListener('keyup', (e) => handleKeyEvent(e, false));
   window.addEventListener('blur', () => activeDirections.clear());
 
+  function spawnEnemy() {
+    const x = ENEMY_RADIUS + Math.random() * (state.width - 2 * ENEMY_RADIUS);
+    state.enemies.push({ x, y: -ENEMY_RADIUS, radius: ENEMY_RADIUS });
+  }
+
   function resize() {
     const dpr = window.devicePixelRatio || 1;
 
@@ -59,11 +71,21 @@
     canvas.style.height = `${state.height * scale}px`;
   }
 
-  const MAX_DT = 100; // ms; caps the movement step after a stalled/backgrounded frame
-
   function update(dt) {
-    // Enemies, bullets, and scoring are implemented in later tasks.
-    const clampedDt = Math.min(dt, MAX_DT);
+    // Bullets and scoring are implemented in later tasks.
+    state.spawnTimer += dt;
+    while (state.spawnTimer >= ENEMY_SPAWN_INTERVAL_MS) {
+      state.spawnTimer -= ENEMY_SPAWN_INTERVAL_MS;
+      spawnEnemy();
+    }
+
+    for (const enemy of state.enemies) {
+      enemy.y += ENEMY_SPEED_PX_PER_SEC * (dt / 1000);
+    }
+
+    state.enemies = state.enemies.filter(
+      (enemy) => enemy.y - enemy.radius <= state.height
+    );
 
     let dx = 0;
     let dy = 0;
@@ -79,7 +101,7 @@
       dy *= norm;
     }
 
-    const distance = player.speed * (clampedDt / 1000);
+    const distance = player.speed * (dt / 1000);
     dx *= distance;
     dy *= distance;
 
@@ -100,6 +122,13 @@
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, state.width, state.height);
 
+    ctx.fillStyle = '#e74c3c';
+    for (const enemy of state.enemies) {
+      ctx.beginPath();
+      ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     const halfWidth = player.width / 2;
     const halfHeight = player.height / 2;
 
@@ -113,7 +142,8 @@
   }
 
   function loop(timestamp) {
-    const dt = state.lastTime ? timestamp - state.lastTime : 0;
+    const rawDt = state.lastTime ? timestamp - state.lastTime : 0;
+    const dt = Math.min(rawDt, MAX_DT_MS);
     state.lastTime = timestamp;
 
     update(dt);
