@@ -15,6 +15,42 @@
     spawnTimer: 0,
   };
 
+  const player = {
+    x: state.width / 2,
+    y: state.height - 50,
+    width: 24,
+    height: 28,
+    speed: 300, // px/sec
+  };
+
+  const KEY_DIRECTIONS = {
+    arrowup: 'up',
+    w: 'up',
+    arrowdown: 'down',
+    s: 'down',
+    arrowleft: 'left',
+    a: 'left',
+    arrowright: 'right',
+    d: 'right',
+  };
+
+  const activeDirections = new Set();
+
+  function handleKeyEvent(e, isDown) {
+    const direction = KEY_DIRECTIONS[e.key.toLowerCase()];
+    if (!direction) return;
+    e.preventDefault();
+    if (isDown) {
+      activeDirections.add(direction);
+    } else {
+      activeDirections.delete(direction);
+    }
+  }
+
+  window.addEventListener('keydown', (e) => handleKeyEvent(e, true));
+  window.addEventListener('keyup', (e) => handleKeyEvent(e, false));
+  window.addEventListener('blur', () => activeDirections.clear());
+
   function spawnEnemy() {
     const x = ENEMY_RADIUS + Math.random() * (state.width - 2 * ENEMY_RADIUS);
     state.enemies.push({ x, y: -ENEMY_RADIUS, radius: ENEMY_RADIUS });
@@ -36,6 +72,7 @@
   }
 
   function update(dt) {
+    // Bullets and scoring are implemented in later tasks.
     state.spawnTimer += dt;
     while (state.spawnTimer >= ENEMY_SPAWN_INTERVAL_MS) {
       state.spawnTimer -= ENEMY_SPAWN_INTERVAL_MS;
@@ -49,6 +86,36 @@
     state.enemies = state.enemies.filter(
       (enemy) => enemy.y - enemy.radius <= state.height
     );
+
+    let dx = 0;
+    let dy = 0;
+
+    if (activeDirections.has('left')) dx -= 1;
+    if (activeDirections.has('right')) dx += 1;
+    if (activeDirections.has('up')) dy -= 1;
+    if (activeDirections.has('down')) dy += 1;
+
+    if (dx !== 0 && dy !== 0) {
+      const norm = Math.SQRT1_2;
+      dx *= norm;
+      dy *= norm;
+    }
+
+    const distance = player.speed * (dt / 1000);
+    dx *= distance;
+    dy *= distance;
+
+    const halfWidth = player.width / 2;
+    const halfHeight = player.height / 2;
+
+    player.x = Math.min(
+      state.width - halfWidth,
+      Math.max(halfWidth, player.x + dx)
+    );
+    player.y = Math.min(
+      state.height - halfHeight,
+      Math.max(halfHeight, player.y + dy)
+    );
   }
 
   function render() {
@@ -61,6 +128,17 @@
       ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
       ctx.fill();
     }
+
+    const halfWidth = player.width / 2;
+    const halfHeight = player.height / 2;
+
+    ctx.fillStyle = '#7fffd4';
+    ctx.beginPath();
+    ctx.moveTo(player.x, player.y - halfHeight);
+    ctx.lineTo(player.x - halfWidth, player.y + halfHeight);
+    ctx.lineTo(player.x + halfWidth, player.y + halfHeight);
+    ctx.closePath();
+    ctx.fill();
   }
 
   function loop(timestamp) {
