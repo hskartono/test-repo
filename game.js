@@ -23,6 +23,7 @@
   state.bullets = [];
   state.enemies = [];
   state.spawnTimer = 0;
+  state.score = 0;
 
   const BULLET_WIDTH = 4;
   const BULLET_HEIGHT = 10;
@@ -92,6 +93,23 @@
 
   const MAX_DT = 100; // ms; caps the movement step after a stalled/backgrounded frame
 
+  // Distance check: bullet approximated as a circle since it's small and fast-moving.
+  function circleHitsCircle(ax, ay, ar, bx, by, br) {
+    const dx = ax - bx;
+    const dy = ay - by;
+    const radii = ar + br;
+    return dx * dx + dy * dy <= radii * radii;
+  }
+
+  // Bounding-box check: player has no radius, so treat it as an AABB against the enemy circle.
+  function rectHitsCircle(px, py, halfW, halfH, cx, cy, cr) {
+    const closestX = Math.min(Math.max(cx, px - halfW), px + halfW);
+    const closestY = Math.min(Math.max(cy, py - halfH), py + halfH);
+    const dx = cx - closestX;
+    const dy = cy - closestY;
+    return dx * dx + dy * dy <= cr * cr;
+  }
+
   function update(dt) {
     const clampedDt = Math.min(dt, MAX_DT);
     let dx = 0;
@@ -142,6 +160,52 @@
     state.enemies = state.enemies.filter(
       (enemy) => enemy.y - enemy.radius <= state.height
     );
+
+    const bulletRadius = Math.max(BULLET_WIDTH, BULLET_HEIGHT) / 2;
+
+    // Bullet-enemy pass first so a kill is credited even if the same enemy
+    // would also reach the player this frame.
+    for (const enemy of state.enemies) {
+      if (enemy.dead) continue;
+      for (const bullet of state.bullets) {
+        if (bullet.dead) continue;
+        if (
+          circleHitsCircle(
+            bullet.x,
+            bullet.y,
+            bulletRadius,
+            enemy.x,
+            enemy.y,
+            enemy.radius
+          )
+        ) {
+          bullet.dead = true;
+          enemy.dead = true;
+          state.score += 1;
+          break;
+        }
+      }
+    }
+
+    for (const enemy of state.enemies) {
+      if (enemy.dead) continue;
+      if (
+        rectHitsCircle(
+          player.x,
+          player.y,
+          halfWidth,
+          halfHeight,
+          enemy.x,
+          enemy.y,
+          enemy.radius
+        )
+      ) {
+        enemy.dead = true;
+      }
+    }
+
+    state.bullets = state.bullets.filter((b) => !b.dead);
+    state.enemies = state.enemies.filter((e) => !e.dead);
   }
 
   function render() {
@@ -175,6 +239,11 @@
       ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
       ctx.fill();
     }
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '20px sans-serif';
+    ctx.textBaseline = 'top';
+    ctx.fillText(`Score: ${state.score}`, 10, 10);
   }
 
   function loop(timestamp) {
