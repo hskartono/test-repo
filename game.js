@@ -5,6 +5,7 @@
   const ENEMY_SPAWN_INTERVAL_MS = 1000;
   const ENEMY_RADIUS = 16;
   const ENEMY_SPEED_PX_PER_SEC = 120;
+  const LIVES_START = 3;
 
   const state = {
     width: canvas.width,
@@ -12,9 +13,12 @@
     lastTime: 0,
   };
 
+  const INITIAL_PLAYER_X = state.width / 2;
+  const INITIAL_PLAYER_Y = state.height - 50;
+
   const player = {
-    x: state.width / 2,
-    y: state.height - 50,
+    x: INITIAL_PLAYER_X,
+    y: INITIAL_PLAYER_Y,
     width: 24,
     height: 28,
     speed: 300, // px/sec
@@ -24,6 +28,30 @@
   state.enemies = [];
   state.spawnTimer = 0;
   state.score = 0;
+  state.lives = LIVES_START;
+  state.gameOver = false;
+
+  const restartBtn = document.getElementById('restart-btn');
+
+  function triggerGameOver() {
+    state.gameOver = true;
+    restartBtn.classList.remove('hidden');
+  }
+
+  function resetGame() {
+    state.score = 0;
+    state.lives = LIVES_START;
+    state.enemies = [];
+    state.bullets = [];
+    state.spawnTimer = 0;
+    state.gameOver = false;
+    player.x = INITIAL_PLAYER_X;
+    player.y = INITIAL_PLAYER_Y;
+    activeDirections.clear();
+    restartBtn.classList.add('hidden');
+  }
+
+  restartBtn.addEventListener('click', resetGame);
 
   const BULLET_WIDTH = 4;
   const BULLET_HEIGHT = 10;
@@ -55,6 +83,7 @@
   const activeDirections = new Set();
 
   function handleKeyEvent(e, isDown) {
+    if (state.gameOver) return;
     const direction = KEY_DIRECTIONS[e.key.toLowerCase()];
     if (!direction) return;
     e.preventDefault();
@@ -71,6 +100,7 @@
 
   window.addEventListener('keydown', (e) => {
     if (e.code !== 'Space') return;
+    if (state.gameOver) return; // let Space activate a focused Restart button instead
     e.preventDefault();
     if (e.repeat) return; // ignore OS auto-repeat; one press = one bullet
     spawnBullet();
@@ -111,6 +141,8 @@
   }
 
   function update(dt) {
+    if (state.gameOver) return;
+
     const clampedDt = Math.min(dt, MAX_DT);
     let dx = 0;
     let dy = 0;
@@ -201,6 +233,11 @@
         )
       ) {
         enemy.dead = true;
+        state.lives -= 1;
+        if (state.lives <= 0) {
+          state.lives = 0;
+          triggerGameOver();
+        }
       }
     }
 
@@ -244,6 +281,28 @@
     ctx.font = '20px sans-serif';
     ctx.textBaseline = 'top';
     ctx.fillText(`Score: ${state.score}`, 10, 10);
+    ctx.fillText(`Lives: ${state.lives}`, 10, 34);
+
+    if (state.gameOver) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.fillRect(0, 0, state.width, state.height);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+
+      ctx.font = 'bold 40px sans-serif';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('GAME OVER', state.width / 2, state.height / 2 - 20);
+
+      ctx.font = '24px sans-serif';
+      ctx.fillText(
+        `Final Score: ${state.score}`,
+        state.width / 2,
+        state.height / 2 + 24
+      );
+
+      ctx.textAlign = 'left';
+    }
   }
 
   function loop(timestamp) {
