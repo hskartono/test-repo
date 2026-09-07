@@ -7,7 +7,14 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <canvas id="gameCanvas" width="480" height="640"></canvas>
+  <div id="gameWrap">
+    <canvas id="gameCanvas" width="480" height="640"></canvas>
+    <div id="gameOverScreen" class="hidden">
+      <h1>Game Over</h1>
+      <p>Final Score: <span id="finalScore">0</span></p>
+      <button id="restartButton" type="button">Restart</button>
+    </div>
+  </div>
   <script src="game.js" defer></script>
 </body>
 </html>
