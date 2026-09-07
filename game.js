@@ -16,6 +16,12 @@
     speed: 220
   };
 
+  var bullets = [];
+  var BULLET_SPEED = 480;
+  var BULLET_WIDTH = 4;
+  var BULLET_HEIGHT = 12;
+  var FIRE_CODE = 'Space';
+
   var keys = {};
 
   var DIRECTION_CODES = {
@@ -31,9 +37,22 @@
       HANDLED_CODES[code] = true;
     });
   });
+  HANDLED_CODES[FIRE_CODE] = true;
+
+  function spawnBullet() {
+    bullets.push({
+      x: player.x,
+      y: player.y - player.height / 2,
+      width: BULLET_WIDTH,
+      height: BULLET_HEIGHT
+    });
+  }
 
   function handleKeyDown(event) {
     if (HANDLED_CODES[event.code]) {
+      if (event.code === FIRE_CODE && !keys[event.code]) {
+        spawnBullet();
+      }
       keys[event.code] = true;
       event.preventDefault();
     }
@@ -77,6 +96,18 @@
     var halfHeight = player.height / 2;
     player.x = Math.min(Math.max(player.x, halfWidth), gameState.width - halfWidth);
     player.y = Math.min(Math.max(player.y, halfHeight), gameState.height - halfHeight);
+
+    updateBullets(dt);
+  }
+
+  function updateBullets(dt) {
+    bullets.forEach(function (bullet) {
+      bullet.y -= BULLET_SPEED * dt;
+    });
+
+    bullets = bullets.filter(function (bullet) {
+      return bullet.y + bullet.height / 2 >= 0;
+    });
   }
 
   function drawPlayer(ctx) {
@@ -92,6 +123,18 @@
     ctx.fill();
   }
 
+  function drawBullets(ctx) {
+    ctx.fillStyle = '#ff0';
+    bullets.forEach(function (bullet) {
+      ctx.fillRect(
+        bullet.x - bullet.width / 2,
+        bullet.y - bullet.height / 2,
+        bullet.width,
+        bullet.height
+      );
+    });
+  }
+
   function draw() {
     var ctx = gameState.ctx;
     ctx.clearRect(0, 0, gameState.width, gameState.height);
@@ -99,6 +142,7 @@
     ctx.fillRect(0, 0, gameState.width, gameState.height);
 
     drawPlayer(ctx);
+    drawBullets(ctx);
   }
 
   function resizeCanvas() {
