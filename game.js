@@ -1,8 +1,8 @@
 (function () {
-  var ENEMY_SPAWN_INTERVAL_MS = 1000;
+  var MAX_DT = 0.1;
+  var ENEMY_SPAWN_INTERVAL = 1;
   var ENEMY_SPEED_PX_PER_SEC = 150;
   var ENEMY_RADIUS = 15;
-  var MAX_FRAME_DT_MS = 250;
 
   var gameState = {
     canvas: null,
@@ -14,6 +14,133 @@
     enemies: [],
     enemySpawnTimer: 0
   };
+
+  var player = {
+    x: gameState.width / 2,
+    y: gameState.height - 40,
+    width: 24,
+    height: 28,
+    speed: 220
+  };
+
+  var keys = {};
+
+  var DIRECTION_CODES = {
+    up: ['ArrowUp', 'KeyW'],
+    down: ['ArrowDown', 'KeyS'],
+    left: ['ArrowLeft', 'KeyA'],
+    right: ['ArrowRight', 'KeyD']
+  };
+
+  var HANDLED_CODES = {};
+  Object.keys(DIRECTION_CODES).forEach(function (direction) {
+    DIRECTION_CODES[direction].forEach(function (code) {
+      HANDLED_CODES[code] = true;
+    });
+  });
+
+  function handleKeyDown(event) {
+    if (HANDLED_CODES[event.code]) {
+      keys[event.code] = true;
+      event.preventDefault();
+    }
+  }
+
+  function handleKeyUp(event) {
+    if (HANDLED_CODES[event.code]) {
+      keys[event.code] = false;
+      event.preventDefault();
+    }
+  }
+
+  function clearKeys() {
+    keys = {};
+  }
+
+  function isDirectionActive(direction) {
+    return DIRECTION_CODES[direction].some(function (code) {
+      return !!keys[code];
+    });
+  }
+
+  function spawnEnemy() {
+    gameState.enemies.push({
+      x: Math.random() * (gameState.width - 2 * ENEMY_RADIUS) + ENEMY_RADIUS,
+      y: -ENEMY_RADIUS,
+      radius: ENEMY_RADIUS
+    });
+  }
+
+  function updateEnemies(dt) {
+    gameState.enemySpawnTimer += dt;
+    while (gameState.enemySpawnTimer >= ENEMY_SPAWN_INTERVAL) {
+      spawnEnemy();
+      gameState.enemySpawnTimer -= ENEMY_SPAWN_INTERVAL;
+    }
+
+    gameState.enemies.forEach(function (enemy) {
+      enemy.y += ENEMY_SPEED_PX_PER_SEC * dt;
+    });
+
+    gameState.enemies = gameState.enemies.filter(function (enemy) {
+      return enemy.y - enemy.radius <= gameState.height;
+    });
+  }
+
+  function update(dt) {
+    dt = Math.min(dt, MAX_DT);
+
+    var vx = (isDirectionActive('right') ? 1 : 0) - (isDirectionActive('left') ? 1 : 0);
+    var vy = (isDirectionActive('down') ? 1 : 0) - (isDirectionActive('up') ? 1 : 0);
+
+    if (vx !== 0 && vy !== 0) {
+      var norm = Math.SQRT1_2;
+      vx *= norm;
+      vy *= norm;
+    }
+
+    player.x += vx * player.speed * dt;
+    player.y += vy * player.speed * dt;
+
+    var halfWidth = player.width / 2;
+    var halfHeight = player.height / 2;
+    player.x = Math.min(Math.max(player.x, halfWidth), gameState.width - halfWidth);
+    player.y = Math.min(Math.max(player.y, halfHeight), gameState.height - halfHeight);
+
+    updateEnemies(dt);
+  }
+
+  function drawPlayer(ctx) {
+    var halfWidth = player.width / 2;
+    var halfHeight = player.height / 2;
+
+    ctx.fillStyle = '#0ff';
+    ctx.beginPath();
+    ctx.moveTo(player.x, player.y - halfHeight);
+    ctx.lineTo(player.x - halfWidth, player.y + halfHeight);
+    ctx.lineTo(player.x + halfWidth, player.y + halfHeight);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawEnemies(ctx) {
+    ctx.fillStyle = '#e33';
+    gameState.enemies.forEach(function (enemy) {
+      ctx.beginPath();
+      ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+
+  function draw() {
+    var ctx = gameState.ctx;
+    ctx.clearRect(0, 0, gameState.width, gameState.height);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, gameState.width, gameState.height);
+
+    drawPlayer(ctx);
+    drawEnemies(ctx);
+  }
 
   function resizeCanvas() {
     var aspectRatio = gameState.width / gameState.height;
@@ -35,55 +162,12 @@
     gameState.canvas.style.height = displayHeight + 'px';
   }
 
-  function spawnEnemy() {
-    gameState.enemies.push({
-      x: Math.random() * (gameState.width - 2 * ENEMY_RADIUS) + ENEMY_RADIUS,
-      y: -ENEMY_RADIUS,
-      radius: ENEMY_RADIUS
-    });
-  }
-
-  function updateEnemies(dt) {
-    gameState.enemySpawnTimer += dt;
-    while (gameState.enemySpawnTimer >= ENEMY_SPAWN_INTERVAL_MS) {
-      spawnEnemy();
-      gameState.enemySpawnTimer -= ENEMY_SPAWN_INTERVAL_MS;
-    }
-
-    var dtSeconds = dt / 1000;
-    gameState.enemies.forEach(function (enemy) {
-      enemy.y += ENEMY_SPEED_PX_PER_SEC * dtSeconds;
-    });
-
-    gameState.enemies = gameState.enemies.filter(function (enemy) {
-      return enemy.y - enemy.radius <= gameState.height;
-    });
-  }
-
-  function drawEnemies() {
-    var ctx = gameState.ctx;
-    ctx.fillStyle = '#e33';
-    gameState.enemies.forEach(function (enemy) {
-      ctx.beginPath();
-      ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
-      ctx.fill();
-    });
-  }
-
   function render(timestamp) {
-    var ctx = gameState.ctx;
-    ctx.clearRect(0, 0, gameState.width, gameState.height);
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, gameState.width, gameState.height);
-
-    var dt = gameState.lastTimestamp ? timestamp - gameState.lastTimestamp : 0;
-    // Clamp so a backgrounded/suspended tab's huge dt on resume can't
-    // trigger a synchronous burst of catch-up spawns in updateEnemies.
-    dt = Math.min(dt, MAX_FRAME_DT_MS);
-    updateEnemies(dt);
-    drawEnemies();
-
+    var dt = gameState.lastTimestamp ? (timestamp - gameState.lastTimestamp) / 1000 : 0;
     gameState.lastTimestamp = timestamp;
+
+    update(dt);
+    draw();
 
     if (gameState.running) {
       requestAnimationFrame(render);
@@ -96,6 +180,9 @@
 
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', clearKeys);
 
     requestAnimationFrame(render);
   }
