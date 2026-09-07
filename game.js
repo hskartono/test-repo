@@ -1,11 +1,18 @@
 (function () {
+  var MAX_DT = 0.1;
+  var ENEMY_SPAWN_INTERVAL = 1;
+  var ENEMY_SPEED_PX_PER_SEC = 150;
+  var ENEMY_RADIUS = 15;
+
   var gameState = {
     canvas: null,
     ctx: null,
     width: 480,
     height: 640,
     running: true,
-    lastTimestamp: 0
+    lastTimestamp: 0,
+    enemies: [],
+    enemySpawnTimer: 0
   };
 
   var player = {
@@ -56,7 +63,29 @@
     });
   }
 
-  var MAX_DT = 0.1;
+  function spawnEnemy() {
+    gameState.enemies.push({
+      x: Math.random() * (gameState.width - 2 * ENEMY_RADIUS) + ENEMY_RADIUS,
+      y: -ENEMY_RADIUS,
+      radius: ENEMY_RADIUS
+    });
+  }
+
+  function updateEnemies(dt) {
+    gameState.enemySpawnTimer += dt;
+    while (gameState.enemySpawnTimer >= ENEMY_SPAWN_INTERVAL) {
+      spawnEnemy();
+      gameState.enemySpawnTimer -= ENEMY_SPAWN_INTERVAL;
+    }
+
+    gameState.enemies.forEach(function (enemy) {
+      enemy.y += ENEMY_SPEED_PX_PER_SEC * dt;
+    });
+
+    gameState.enemies = gameState.enemies.filter(function (enemy) {
+      return enemy.y - enemy.radius <= gameState.height;
+    });
+  }
 
   function update(dt) {
     dt = Math.min(dt, MAX_DT);
@@ -77,6 +106,8 @@
     var halfHeight = player.height / 2;
     player.x = Math.min(Math.max(player.x, halfWidth), gameState.width - halfWidth);
     player.y = Math.min(Math.max(player.y, halfHeight), gameState.height - halfHeight);
+
+    updateEnemies(dt);
   }
 
   function drawPlayer(ctx) {
@@ -92,6 +123,15 @@
     ctx.fill();
   }
 
+  function drawEnemies(ctx) {
+    ctx.fillStyle = '#e33';
+    gameState.enemies.forEach(function (enemy) {
+      ctx.beginPath();
+      ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+
   function draw() {
     var ctx = gameState.ctx;
     ctx.clearRect(0, 0, gameState.width, gameState.height);
@@ -99,6 +139,7 @@
     ctx.fillRect(0, 0, gameState.width, gameState.height);
 
     drawPlayer(ctx);
+    drawEnemies(ctx);
   }
 
   function resizeCanvas() {
