@@ -3,6 +3,7 @@
   var ENEMY_SPAWN_INTERVAL = 1;
   var ENEMY_SPEED_PX_PER_SEC = 150;
   var ENEMY_RADIUS = 15;
+  var STARTING_LIVES = 3;
 
   var gameState = {
     canvas: null,
@@ -13,12 +14,19 @@
     lastTimestamp: 0,
     enemies: [],
     enemySpawnTimer: 0,
-    score: 0
+    score: 0,
+    lives: STARTING_LIVES,
+    gameOverScreen: null,
+    finalScoreEl: null,
+    restartButton: null
   };
 
+  var INITIAL_PLAYER_X = gameState.width / 2;
+  var INITIAL_PLAYER_Y = gameState.height - 40;
+
   var player = {
-    x: gameState.width / 2,
-    y: gameState.height - 40,
+    x: INITIAL_PLAYER_X,
+    y: INITIAL_PLAYER_Y,
     width: 24,
     height: 28,
     speed: 220
@@ -149,6 +157,34 @@
     return dx * dx + dy * dy <= radii * radii;
   }
 
+  function loseLife() {
+    gameState.lives = Math.max(0, gameState.lives - 1);
+    if (gameState.lives === 0) {
+      triggerGameOver();
+    }
+  }
+
+  function triggerGameOver() {
+    gameState.running = false;
+    gameState.finalScoreEl.textContent = gameState.score;
+    gameState.gameOverScreen.classList.remove('hidden');
+  }
+
+  function resetGame() {
+    gameState.score = 0;
+    gameState.lives = STARTING_LIVES;
+    gameState.enemies = [];
+    gameState.enemySpawnTimer = 0;
+    gameState.lastTimestamp = 0;
+    bullets = [];
+    player.x = INITIAL_PLAYER_X;
+    player.y = INITIAL_PLAYER_Y;
+    clearKeys();
+    gameState.gameOverScreen.classList.add('hidden');
+    gameState.running = true;
+    requestAnimationFrame(render);
+  }
+
   function checkCollisions() {
     var hitBullets = [];
     var hitEnemies = [];
@@ -169,11 +205,12 @@
 
     var playerRadius = (player.width + player.height) / 4;
     gameState.enemies.forEach(function (enemy, enemyIndex) {
-      if (hitEnemies[enemyIndex]) {
+      if (hitEnemies[enemyIndex] || !gameState.running) {
         return;
       }
       if (circleCollide(player, playerRadius, enemy, enemy.radius)) {
         hitEnemies[enemyIndex] = true;
+        loseLife();
       }
     });
 
@@ -236,6 +273,15 @@
     ctx.fillText('Score: ' + gameState.score, 8, 8);
   }
 
+  function drawLives(ctx) {
+    ctx.fillStyle = '#fff';
+    ctx.font = '16px sans-serif';
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'right';
+    ctx.fillText('Lives: ' + gameState.lives, gameState.width - 8, 8);
+    ctx.textAlign = 'left';
+  }
+
   function draw() {
     var ctx = gameState.ctx;
     ctx.clearRect(0, 0, gameState.width, gameState.height);
@@ -246,6 +292,7 @@
     drawBullets(ctx);
     drawEnemies(ctx);
     drawScore(ctx);
+    drawLives(ctx);
   }
 
   function resizeCanvas() {
@@ -283,12 +330,16 @@
   function init() {
     gameState.canvas = document.getElementById('gameCanvas');
     gameState.ctx = gameState.canvas.getContext('2d');
+    gameState.gameOverScreen = document.getElementById('gameOverScreen');
+    gameState.finalScoreEl = document.getElementById('finalScore');
+    gameState.restartButton = document.getElementById('restartButton');
 
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     window.addEventListener('blur', clearKeys);
+    gameState.restartButton.addEventListener('click', resetGame);
 
     requestAnimationFrame(render);
   }
