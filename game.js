@@ -12,7 +12,8 @@
     running: true,
     lastTimestamp: 0,
     enemies: [],
-    enemySpawnTimer: 0
+    enemySpawnTimer: 0,
+    score: 0
   };
 
   var player = {
@@ -128,6 +129,60 @@
 
     updateBullets(dt);
     updateEnemies(dt);
+    checkCollisions();
+  }
+
+  function circleRectCollide(circle, rect) {
+    var halfWidth = rect.width / 2;
+    var halfHeight = rect.height / 2;
+    var closestX = Math.min(Math.max(circle.x, rect.x - halfWidth), rect.x + halfWidth);
+    var closestY = Math.min(Math.max(circle.y, rect.y - halfHeight), rect.y + halfHeight);
+    var dx = circle.x - closestX;
+    var dy = circle.y - closestY;
+    return dx * dx + dy * dy <= circle.radius * circle.radius;
+  }
+
+  function circleCollide(a, aRadius, b, bRadius) {
+    var dx = a.x - b.x;
+    var dy = a.y - b.y;
+    var radii = aRadius + bRadius;
+    return dx * dx + dy * dy <= radii * radii;
+  }
+
+  function checkCollisions() {
+    var hitBullets = [];
+    var hitEnemies = [];
+
+    gameState.enemies.forEach(function (enemy, enemyIndex) {
+      for (var i = 0; i < bullets.length; i++) {
+        if (hitBullets[i]) {
+          continue;
+        }
+        if (circleRectCollide(enemy, bullets[i])) {
+          hitBullets[i] = true;
+          hitEnemies[enemyIndex] = true;
+          gameState.score++;
+          break;
+        }
+      }
+    });
+
+    var playerRadius = (player.width + player.height) / 4;
+    gameState.enemies.forEach(function (enemy, enemyIndex) {
+      if (hitEnemies[enemyIndex]) {
+        return;
+      }
+      if (circleCollide(player, playerRadius, enemy, enemy.radius)) {
+        hitEnemies[enemyIndex] = true;
+      }
+    });
+
+    bullets = bullets.filter(function (bullet, index) {
+      return !hitBullets[index];
+    });
+    gameState.enemies = gameState.enemies.filter(function (enemy, index) {
+      return !hitEnemies[index];
+    });
   }
 
   function updateBullets(dt) {
@@ -174,6 +229,13 @@
     });
   }
 
+  function drawScore(ctx) {
+    ctx.fillStyle = '#fff';
+    ctx.font = '16px sans-serif';
+    ctx.textBaseline = 'top';
+    ctx.fillText('Score: ' + gameState.score, 8, 8);
+  }
+
   function draw() {
     var ctx = gameState.ctx;
     ctx.clearRect(0, 0, gameState.width, gameState.height);
@@ -183,6 +245,7 @@
     drawPlayer(ctx);
     drawBullets(ctx);
     drawEnemies(ctx);
+    drawScore(ctx);
   }
 
   function resizeCanvas() {
