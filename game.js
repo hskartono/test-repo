@@ -5,6 +5,30 @@
   var ENEMY_RADIUS = 15;
   var STARTING_LIVES = 3;
 
+  var PLAYER_SPRITE_WIDTH = 30;
+  var PLAYER_SPRITE_HEIGHT = 23;
+  var ENEMY_SPRITE_WIDTH = 32;
+  var ENEMY_SPRITE_HEIGHT = 28;
+  var ENEMY_SPAWN_MARGIN = Math.max(ENEMY_RADIUS, ENEMY_SPRITE_WIDTH / 2);
+  var BULLET_SPRITE_HEIGHT = 24;
+  var BULLET_FRAME_INTERVAL = 0.08;
+  var BACKGROUND_TILE_SIZE = 256;
+  var BACKGROUND_SCROLL_SPEED = 80;
+
+  var ASSET_PATHS = {
+    player: 'assets/player.png',
+    enemy: 'assets/enemy.png',
+    bulletFrames: ['assets/bullet-1.png', 'assets/bullet-2.png'],
+    background: 'assets/background.png'
+  };
+
+  var sprites = {
+    player: null,
+    enemy: null,
+    bulletFrames: [],
+    background: null
+  };
+
   var gameState = {
     canvas: null,
     ctx: null,
@@ -14,6 +38,7 @@
     lastTimestamp: 0,
     enemies: [],
     enemySpawnTimer: 0,
+    backgroundY: 0,
     score: 0,
     lives: STARTING_LIVES,
     gameOverScreen: null,
@@ -60,7 +85,9 @@
       x: player.x,
       y: player.y - player.height / 2,
       width: BULLET_WIDTH,
-      height: BULLET_HEIGHT
+      height: BULLET_HEIGHT,
+      frameIndex: 0,
+      frameTimer: 0
     });
   }
 
@@ -93,7 +120,7 @@
 
   function spawnEnemy() {
     gameState.enemies.push({
-      x: Math.random() * (gameState.width - 2 * ENEMY_RADIUS) + ENEMY_RADIUS,
+      x: Math.random() * (gameState.width - 2 * ENEMY_SPAWN_MARGIN) + ENEMY_SPAWN_MARGIN,
       y: -ENEMY_RADIUS,
       radius: ENEMY_RADIUS
     });
@@ -138,6 +165,8 @@
     updateBullets(dt);
     updateEnemies(dt);
     checkCollisions();
+
+    gameState.backgroundY = (gameState.backgroundY + BACKGROUND_SCROLL_SPEED * dt) % BACKGROUND_TILE_SIZE;
   }
 
   function circleRectCollide(circle, rect) {
@@ -175,6 +204,7 @@
     gameState.lives = STARTING_LIVES;
     gameState.enemies = [];
     gameState.enemySpawnTimer = 0;
+    gameState.backgroundY = 0;
     gameState.lastTimestamp = 0;
     bullets = [];
     player.x = INITIAL_PLAYER_X;
@@ -225,6 +255,11 @@
   function updateBullets(dt) {
     bullets.forEach(function (bullet) {
       bullet.y -= BULLET_SPEED * dt;
+      bullet.frameTimer += dt;
+      while (bullet.frameTimer >= BULLET_FRAME_INTERVAL) {
+        bullet.frameTimer -= BULLET_FRAME_INTERVAL;
+        bullet.frameIndex = (bullet.frameIndex + 1) % sprites.bulletFrames.length;
+      }
     });
 
     bullets = bullets.filter(function (bullet) {
@@ -232,38 +267,66 @@
     });
   }
 
-  function drawPlayer(ctx) {
-    var halfWidth = player.width / 2;
-    var halfHeight = player.height / 2;
+  function isSpriteReady(img) {
+    return !!img && img.complete && img.naturalWidth > 0;
+  }
 
-    ctx.fillStyle = '#0ff';
-    ctx.beginPath();
-    ctx.moveTo(player.x, player.y - halfHeight);
-    ctx.lineTo(player.x - halfWidth, player.y + halfHeight);
-    ctx.lineTo(player.x + halfWidth, player.y + halfHeight);
-    ctx.closePath();
-    ctx.fill();
+  function drawPlayer(ctx) {
+    if (!isSpriteReady(sprites.player)) {
+      return;
+    }
+    ctx.drawImage(
+      sprites.player,
+      player.x - PLAYER_SPRITE_WIDTH / 2,
+      player.y - PLAYER_SPRITE_HEIGHT / 2,
+      PLAYER_SPRITE_WIDTH,
+      PLAYER_SPRITE_HEIGHT
+    );
   }
 
   function drawBullets(ctx) {
-    ctx.fillStyle = '#ff0';
     bullets.forEach(function (bullet) {
-      ctx.fillRect(
-        bullet.x - bullet.width / 2,
-        bullet.y - bullet.height / 2,
-        bullet.width,
-        bullet.height
+      var sprite = sprites.bulletFrames[bullet.frameIndex];
+      if (!isSpriteReady(sprite)) {
+        return;
+      }
+      var drawHeight = BULLET_SPRITE_HEIGHT;
+      var drawWidth = drawHeight * (sprite.naturalWidth / sprite.naturalHeight);
+      ctx.drawImage(
+        sprite,
+        bullet.x - drawWidth / 2,
+        bullet.y - drawHeight / 2,
+        drawWidth,
+        drawHeight
       );
     });
   }
 
   function drawEnemies(ctx) {
-    ctx.fillStyle = '#e33';
+    if (!isSpriteReady(sprites.enemy)) {
+      return;
+    }
     gameState.enemies.forEach(function (enemy) {
-      ctx.beginPath();
-      ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.drawImage(
+        sprites.enemy,
+        enemy.x - ENEMY_SPRITE_WIDTH / 2,
+        enemy.y - ENEMY_SPRITE_HEIGHT / 2,
+        ENEMY_SPRITE_WIDTH,
+        ENEMY_SPRITE_HEIGHT
+      );
     });
+  }
+
+  function drawBackground(ctx) {
+    if (!isSpriteReady(sprites.background)) {
+      return;
+    }
+    var startY = gameState.backgroundY - BACKGROUND_TILE_SIZE;
+    for (var y = startY; y < gameState.height; y += BACKGROUND_TILE_SIZE) {
+      for (var x = 0; x < gameState.width; x += BACKGROUND_TILE_SIZE) {
+        ctx.drawImage(sprites.background, x, y, BACKGROUND_TILE_SIZE, BACKGROUND_TILE_SIZE);
+      }
+    }
   }
 
   function drawScore(ctx) {
@@ -287,6 +350,7 @@
     ctx.clearRect(0, 0, gameState.width, gameState.height);
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, gameState.width, gameState.height);
+    drawBackground(ctx);
 
     drawPlayer(ctx);
     drawBullets(ctx);
@@ -344,5 +408,48 @@
     requestAnimationFrame(render);
   }
 
-  window.addEventListener('DOMContentLoaded', init);
+  function loadAssets(onReady) {
+    function queueImage(src, onLoaded) {
+      var img = new Image();
+      img.onload = onLoaded;
+      img.onerror = onLoaded;
+      img.src = src;
+      return img;
+    }
+
+    var remaining = 3 + ASSET_PATHS.bulletFrames.length;
+
+    function onSourceSettled() {
+      remaining--;
+      if (remaining === 0) {
+        onReady();
+      }
+    }
+
+    sprites.player = queueImage(ASSET_PATHS.player, onSourceSettled);
+    sprites.enemy = queueImage(ASSET_PATHS.enemy, onSourceSettled);
+    sprites.background = queueImage(ASSET_PATHS.background, onSourceSettled);
+    ASSET_PATHS.bulletFrames.forEach(function (src, index) {
+      sprites.bulletFrames[index] = queueImage(src, onSourceSettled);
+    });
+  }
+
+  var domReady = false;
+  var assetsReady = false;
+
+  function startWhenReady() {
+    if (domReady && assetsReady) {
+      init();
+    }
+  }
+
+  window.addEventListener('DOMContentLoaded', function () {
+    domReady = true;
+    startWhenReady();
+  });
+
+  loadAssets(function () {
+    assetsReady = true;
+    startWhenReady();
+  });
 })();
