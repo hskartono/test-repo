@@ -4,6 +4,9 @@
   var ENEMY_SPEED_PX_PER_SEC = 150;
   var ENEMY_RADIUS = 15;
   var STARTING_LIVES = 3;
+  var EXPLOSION_DURATION = 0.4;
+  var INVULNERABLE_DURATION = 1.5;
+  var BLINK_INTERVAL = 0.1;
 
   var PLAYER_SPRITE_WIDTH = 30;
   var PLAYER_SPRITE_HEIGHT = 23;
@@ -38,6 +41,7 @@
     lastTimestamp: 0,
     enemies: [],
     enemySpawnTimer: 0,
+    explosions: [],
     backgroundY: 0,
     score: 0,
     lives: STARTING_LIVES,
@@ -54,7 +58,11 @@
     y: INITIAL_PLAYER_Y,
     width: 24,
     height: 28,
-    speed: 220
+    speed: 220,
+    invulnerable: false,
+    invulnerableTimer: 0,
+    blinkTimer: 0,
+    visible: true
   };
 
   var bullets = [];
@@ -80,6 +88,113 @@
   });
   HANDLED_CODES[FIRE_CODE] = true;
 
+  function createExplosion(x, y) {
+    return { x: x, y: y, age: 0 };
+  }
+
+  function advanceExplosions(explosions, dt, duration) {
+    return explosions
+      .map(function (explosion) {
+        return { x: explosion.x, y: explosion.y, age: explosion.age + dt };
+      })
+      .filter(function (explosion) {
+        return explosion.age < duration;
+      });
+  }
+
+  function startInvulnerability(duration) {
+    return { invulnerable: true, timer: duration, blinkTimer: 0, visible: true };
+  }
+
+  function advanceInvulnerability(state, dt, blinkInterval) {
+    if (!state.invulnerable) {
+      return state;
+    }
+    var timer = state.timer - dt;
+    if (timer <= 0) {
+      return { invulnerable: false, timer: 0, blinkTimer: 0, visible: true };
+    }
+    var blinkTimer = state.blinkTimer + dt;
+    var visible = state.visible;
+    while (blinkTimer >= blinkInterval) {
+      blinkTimer -= blinkInterval;
+      visible = !visible;
+    }
+    return { invulnerable: true, timer: timer, blinkTimer: blinkTimer, visible: visible };
+  }
+
+  function readInvulnerabilityState(target) {
+    return {
+      invulnerable: target.invulnerable,
+      timer: target.invulnerableTimer,
+      blinkTimer: target.blinkTimer,
+      visible: target.visible
+    };
+  }
+
+  function applyInvulnerabilityState(target, state) {
+    target.invulnerable = state.invulnerable;
+    target.invulnerableTimer = state.timer;
+    target.blinkTimer = state.blinkTimer;
+    target.visible = state.visible;
+  }
+
+  function createSoundManager(getAudioContextCtor) {
+    var audioCtx = null;
+
+    function getContext() {
+      if (audioCtx) {
+        return audioCtx;
+      }
+      var Ctor = getAudioContextCtor();
+      if (!Ctor) {
+        return null;
+      }
+      audioCtx = new Ctor();
+      return audioCtx;
+    }
+
+    function playTone(frequency, duration, type) {
+      try {
+        var ctx = getContext();
+        if (!ctx) {
+          return;
+        }
+        if (ctx.state === 'suspended' && typeof ctx.resume === 'function') {
+          ctx.resume();
+        }
+        var oscillator = ctx.createOscillator();
+        var gain = ctx.createGain();
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(frequency, ctx.currentTime);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+        oscillator.connect(gain);
+        gain.connect(ctx.destination);
+        oscillator.start();
+        oscillator.stop(ctx.currentTime + duration);
+      } catch (e) {
+        // Web Audio unavailable or blocked; fail silently.
+      }
+    }
+
+    return {
+      playShoot: function () {
+        playTone(880, 0.08, 'square');
+      },
+      playEnemyHit: function () {
+        playTone(220, 0.12, 'sawtooth');
+      },
+      playCollision: function () {
+        playTone(110, 0.25, 'triangle');
+      }
+    };
+  }
+
+  var soundManager = createSoundManager(function () {
+    return typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext);
+  });
+
   function spawnBullet() {
     bullets.push({
       x: player.x,
@@ -89,6 +204,7 @@
       frameIndex: 0,
       frameTimer: 0
     });
+    soundManager.playShoot();
   }
 
   function handleKeyDown(event) {
@@ -166,6 +282,12 @@
     updateEnemies(dt);
     checkCollisions();
 
+    gameState.explosions = advanceExplosions(gameState.explosions, dt, EXPLOSION_DURATION);
+
+    if (player.invulnerable) {
+      applyInvulnerabilityState(player, advanceInvulnerability(readInvulnerabilityState(player), dt, BLINK_INTERVAL));
+    }
+
     gameState.backgroundY = (gameState.backgroundY + BACKGROUND_SCROLL_SPEED * dt) % BACKGROUND_TILE_SIZE;
   }
 
@@ -204,11 +326,16 @@
     gameState.lives = STARTING_LIVES;
     gameState.enemies = [];
     gameState.enemySpawnTimer = 0;
+    gameState.explosions = [];
     gameState.backgroundY = 0;
     gameState.lastTimestamp = 0;
     bullets = [];
     player.x = INITIAL_PLAYER_X;
     player.y = INITIAL_PLAYER_Y;
+    player.invulnerable = false;
+    player.invulnerableTimer = 0;
+    player.blinkTimer = 0;
+    player.visible = true;
     clearKeys();
     gameState.gameOverScreen.classList.add('hidden');
     gameState.running = true;
@@ -228,6 +355,8 @@
           hitBullets[i] = true;
           hitEnemies[enemyIndex] = true;
           gameState.score++;
+          gameState.explosions.push(createExplosion(enemy.x, enemy.y));
+          soundManager.playEnemyHit();
           break;
         }
       }
@@ -235,12 +364,19 @@
 
     var playerRadius = (player.width + player.height) / 4;
     gameState.enemies.forEach(function (enemy, enemyIndex) {
-      if (hitEnemies[enemyIndex] || !gameState.running) {
+      if (hitEnemies[enemyIndex] || !gameState.running || player.invulnerable) {
         return;
       }
       if (circleCollide(player, playerRadius, enemy, enemy.radius)) {
         hitEnemies[enemyIndex] = true;
+        gameState.explosions.push(createExplosion(player.x, player.y));
+        soundManager.playCollision();
         loseLife();
+        if (gameState.lives > 0) {
+          player.x = INITIAL_PLAYER_X;
+          player.y = INITIAL_PLAYER_Y;
+          applyInvulnerabilityState(player, startInvulnerability(INVULNERABLE_DURATION));
+        }
       }
     });
 
@@ -275,6 +411,9 @@
     if (!isSpriteReady(sprites.player)) {
       return;
     }
+    if (player.invulnerable && !player.visible) {
+      return;
+    }
     ctx.drawImage(
       sprites.player,
       player.x - PLAYER_SPRITE_WIDTH / 2,
@@ -282,6 +421,25 @@
       PLAYER_SPRITE_WIDTH,
       PLAYER_SPRITE_HEIGHT
     );
+  }
+
+  var EXPLOSION_LAYERS = [
+    { color: '255, 255, 255', radius: 6, growth: 18 },
+    { color: '255, 200, 0', radius: 8, growth: 24 },
+    { color: '255, 80, 0', radius: 10, growth: 30 }
+  ];
+
+  function drawExplosions(ctx) {
+    gameState.explosions.forEach(function (explosion) {
+      var progress = Math.min(1, explosion.age / EXPLOSION_DURATION);
+      var alpha = 1 - progress;
+      EXPLOSION_LAYERS.forEach(function (layer) {
+        ctx.beginPath();
+        ctx.fillStyle = 'rgba(' + layer.color + ', ' + alpha + ')';
+        ctx.arc(explosion.x, explosion.y, layer.radius + progress * layer.growth, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    });
   }
 
   function drawBullets(ctx) {
@@ -355,6 +513,7 @@
     drawPlayer(ctx);
     drawBullets(ctx);
     drawEnemies(ctx);
+    drawExplosions(ctx);
     drawScore(ctx);
     drawLives(ctx);
   }
@@ -434,22 +593,41 @@
     });
   }
 
-  var domReady = false;
-  var assetsReady = false;
+  if (typeof window !== 'undefined') {
+    var domReady = false;
+    var assetsReady = false;
 
-  function startWhenReady() {
-    if (domReady && assetsReady) {
-      init();
-    }
+    var startWhenReady = function () {
+      if (domReady && assetsReady) {
+        init();
+      }
+    };
+
+    window.addEventListener('DOMContentLoaded', function () {
+      domReady = true;
+      startWhenReady();
+    });
+
+    loadAssets(function () {
+      assetsReady = true;
+      startWhenReady();
+    });
   }
 
-  window.addEventListener('DOMContentLoaded', function () {
-    domReady = true;
-    startWhenReady();
-  });
-
-  loadAssets(function () {
-    assetsReady = true;
-    startWhenReady();
-  });
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+      circleCollide: circleCollide,
+      circleRectCollide: circleRectCollide,
+      createExplosion: createExplosion,
+      advanceExplosions: advanceExplosions,
+      startInvulnerability: startInvulnerability,
+      advanceInvulnerability: advanceInvulnerability,
+      readInvulnerabilityState: readInvulnerabilityState,
+      applyInvulnerabilityState: applyInvulnerabilityState,
+      createSoundManager: createSoundManager,
+      EXPLOSION_DURATION: EXPLOSION_DURATION,
+      INVULNERABLE_DURATION: INVULNERABLE_DURATION,
+      BLINK_INTERVAL: BLINK_INTERVAL
+    };
+  }
 })();

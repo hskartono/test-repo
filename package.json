@@ -1,0 +1,9 @@
+{
+  "name": "plane-shooter",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Plane shooter browser game",
+  "scripts": {
+    "test": "node --test"
+  }
+}
