@@ -9,10 +9,12 @@
 
   const gameState = createGameState();
   gameState.player = window.Player.createPlayer(GAME_WIDTH, GAME_HEIGHT);
+  gameState.bullets = [];
   window.__gameState = gameState;
   window.__frameCount = 0;
 
   const input = window.InputState.createKeyboardInput();
+  let shootHeldLastFrame = false;
 
   function resizeCanvasToFit() {
     const layout = computeCanvasLayout(window.innerWidth, window.innerHeight, GAME_WIDTH, GAME_HEIGHT);
@@ -33,6 +35,13 @@
     ctx.fill();
   }
 
+  function drawBullets(bullets) {
+    ctx.fillStyle = '#ffffff';
+    bullets.forEach((bullet) => {
+      ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+    });
+  }
+
   function render(timestamp) {
     if (!gameState.running) return;
 
@@ -41,6 +50,12 @@
     gameState.lastTimestamp = timestamp;
 
     gameState.player = window.Player.movePlayer(gameState.player, input, dt, GAME_WIDTH, GAME_HEIGHT);
+
+    if (window.Bullets.shouldFire(input.shoot, shootHeldLastFrame)) {
+      gameState.bullets = window.Bullets.fireBullet(gameState.bullets, gameState.player);
+    }
+    shootHeldLastFrame = input.shoot;
+    gameState.bullets = window.Bullets.updateBullets(gameState.bullets, dt);
 
     // Move existing enemies by this frame's delta first, then spawn new ones -
     // otherwise a large catch-up delta (e.g. after the tab was backgrounded)
@@ -58,6 +73,7 @@
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     drawPlayer(gameState.player);
+    drawBullets(gameState.bullets);
 
     ctx.fillStyle = 'red';
     for (const enemy of gameState.enemies) {

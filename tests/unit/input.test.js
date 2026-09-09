@@ -11,10 +11,10 @@ function dispatch(target, type, code) {
   target.dispatchEvent(event);
 }
 
-test('createKeyboardInput starts with all directions false', () => {
+test('createKeyboardInput starts with all directions and shoot false', () => {
   const target = new EventTarget();
   const state = createKeyboardInput(target);
-  assert.deepEqual(state, { up: false, down: false, left: false, right: false });
+  assert.deepEqual(state, { up: false, down: false, left: false, right: false, shoot: false });
 });
 
 test('ArrowUp/KeyW set and clear "up"', () => {
@@ -77,10 +77,20 @@ test('ArrowRight/KeyD set and clear "right"', () => {
   assert.equal(state.right, false);
 });
 
-test('an unrelated key leaves all flags false', () => {
+test('Space sets and clears "shoot"', () => {
   const target = new EventTarget();
   const state = createKeyboardInput(target);
 
   dispatch(target, 'keydown', 'Space');
-  assert.deepEqual(state, { up: false, down: false, left: false, right: false });
+  assert.equal(state.shoot, true);
+  dispatch(target, 'keyup', 'Space');
+  assert.equal(state.shoot, false);
+});
+
+test('an unrelated key leaves all flags false', () => {
+  const target = new EventTarget();
+  const state = createKeyboardInput(target);
+
+  dispatch(target, 'keydown', 'KeyQ');
+  assert.deepEqual(state, { up: false, down: false, left: false, right: false, shoot: false });
 });

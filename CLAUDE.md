@@ -3,7 +3,7 @@
 
 This project is monitored by FleetCmd, a server that supervises multiple Claude Code agents in tmux and gives the user a single shared Kanban board across all of them, accessed from a browser.
 
-- Your agent id: `task-27`
+- Your agent id: `task-28`
 - REST API base: `http://127.0.0.1:4317/api/v1`
 - Access token: see `.claude/fleetcmd.json` (not repeated here since this file is typically committed to git — make sure `.claude/fleetcmd.json` is gitignored)
 - Full instructions and endpoint reference: see the `fleetcmd-kanban` skill.

@@ -8,11 +8,12 @@
     KeyA: 'left',
     ArrowRight: 'right',
     KeyD: 'right',
+    Space: 'shoot',
   };
 
   function createKeyboardInput(target) {
     const eventTarget = target || global;
-    const state = { up: false, down: false, left: false, right: false };
+    const state = { up: false, down: false, left: false, right: false, shoot: false };
 
     eventTarget.addEventListener('keydown', (event) => {
       const direction = KEY_MAP[event.code];
