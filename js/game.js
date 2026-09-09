@@ -10,6 +10,7 @@
   const gameState = createGameState();
   gameState.player = window.Player.createPlayer(GAME_WIDTH, GAME_HEIGHT);
   gameState.bullets = [];
+  gameState.score = 0;
   window.__gameState = gameState;
   window.__frameCount = 0;
 
@@ -42,6 +43,13 @@
     });
   }
 
+  function drawScore(score) {
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '20px sans-serif';
+    ctx.textBaseline = 'top';
+    ctx.fillText(`Score: ${score}`, 10, 10);
+  }
+
   function render(timestamp) {
     if (!gameState.running) return;
 
@@ -69,6 +77,14 @@
       window.Enemies.ENEMY_RADIUS
     );
 
+    const bulletHits = window.Collisions.resolveBulletEnemyCollisions(gameState.bullets, gameState.enemies);
+    gameState.bullets = bulletHits.bullets;
+    gameState.enemies = bulletHits.enemies;
+    gameState.score += bulletHits.hits;
+
+    const playerHit = window.Collisions.resolvePlayerEnemyCollisions(gameState.player, gameState.enemies);
+    gameState.enemies = playerHit.enemies;
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -81,6 +97,8 @@
       ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
       ctx.fill();
     }
+
+    drawScore(gameState.score);
 
     window.__frameCount += 1;
     requestAnimationFrame(render);
