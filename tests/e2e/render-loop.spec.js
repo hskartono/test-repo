@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
+import { gotoAndStart } from '../helpers/start-game.js';
 
 test('opening the page shows an opaque canvas covered by the scrolling background', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
   await page.waitForTimeout(100);
 
   // The background is now a tiled starfield sprite rather than a flat fill, so
@@ -34,7 +35,7 @@ test('no console errors or page errors occur during load and while the loop runs
   });
   page.on('pageerror', (err) => pageErrors.push(err));
 
-  await page.goto('/');
+  await gotoAndStart(page);
   await page.waitForTimeout(1000);
 
   expect(consoleErrors).toHaveLength(0);
@@ -42,7 +43,7 @@ test('no console errors or page errors occur during load and while the loop runs
 });
 
 test('the render loop runs continuously rather than a single frame', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
 
   const first = await page.evaluate(() => window.__frameCount);
   await page.waitForTimeout(300);
@@ -55,7 +56,7 @@ test('resizing the viewport mid-run does not throw and the canvas stays opaque',
   const pageErrors = [];
   page.on('pageerror', (err) => pageErrors.push(err));
 
-  await page.goto('/');
+  await gotoAndStart(page);
   await page.waitForTimeout(100);
 
   await page.setViewportSize({ width: 375, height: 812 });

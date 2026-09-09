@@ -1,11 +1,12 @@
 import { test, expect } from '@playwright/test';
+import { gotoAndStart } from '../helpers/start-game.js';
 
 async function getBullets(page) {
   return page.evaluate(() => window.__gameState.bullets);
 }
 
 test('pressing Space once spawns a bullet that moves upward at a constant rate', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
   await page.keyboard.down('Space');
   await page.waitForTimeout(50);
   await page.keyboard.up('Space');
@@ -22,7 +23,7 @@ test('pressing Space once spawns a bullet that moves upward at a constant rate',
 });
 
 test('pressing Space multiple times fires a bullet on each discrete press', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
 
   for (let i = 0; i < 3; i += 1) {
     await page.keyboard.down('Space');
@@ -36,7 +37,7 @@ test('pressing Space multiple times fires a bullet on each discrete press', asyn
 });
 
 test('holding Space down continuously fires only one bullet', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
 
   await page.keyboard.down('Space');
   await page.waitForTimeout(300);
@@ -47,7 +48,7 @@ test('holding Space down continuously fires only one bullet', async ({ page }) =
 });
 
 test('a fired bullet is removed from state once it travels past the top of the canvas', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
 
   await page.keyboard.down('Space');
   await page.waitForTimeout(50);
@@ -60,7 +61,7 @@ test('a fired bullet is removed from state once it travels past the top of the c
 });
 
 test('firing does not move the ship', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
   const before = await page.evaluate(() => ({ x: window.__gameState.player.x, y: window.__gameState.player.y }));
 
   await page.keyboard.down('Space');

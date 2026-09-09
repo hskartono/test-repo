@@ -1,11 +1,12 @@
 import { test, expect } from '@playwright/test';
+import { gotoAndStart } from '../helpers/start-game.js';
 
 async function getPlayer(page) {
   return page.evaluate(() => window.__gameState.player);
 }
 
 test('holding ArrowRight moves the ship right, releasing stops it', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
   const before = await getPlayer(page);
 
   await page.keyboard.down('ArrowRight');
@@ -21,7 +22,7 @@ test('holding ArrowRight moves the ship right, releasing stops it', async ({ pag
 });
 
 test('holding KeyD also moves the ship right (WASD parity)', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
   const before = await getPlayer(page);
 
   await page.keyboard.down('KeyD');
@@ -33,7 +34,7 @@ test('holding KeyD also moves the ship right (WASD parity)', async ({ page }) =>
 });
 
 test('holding ArrowLeft/KeyA moves the ship left', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
   const before = await getPlayer(page);
 
   await page.keyboard.down('ArrowLeft');
@@ -52,7 +53,7 @@ test('holding ArrowLeft/KeyA moves the ship left', async ({ page }) => {
 });
 
 test('holding ArrowUp/KeyW moves up and ArrowDown/KeyS moves down', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
   const before = await getPlayer(page);
 
   await page.keyboard.down('ArrowUp');
@@ -77,7 +78,7 @@ test('holding ArrowUp/KeyW moves up and ArrowDown/KeyS moves down', async ({ pag
 // budget is inherently flaky. Polling just needs a ceiling generous enough to
 // notice a truly broken clamp, not to match the exact simulated travel time.
 test('holding ArrowLeft long enough clamps the ship to the left edge', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
 
   await page.keyboard.down('ArrowLeft');
   await expect.poll(async () => (await getPlayer(page)).x, { timeout: 10000 }).toBe(0);
@@ -89,7 +90,7 @@ test('holding ArrowLeft long enough clamps the ship to the left edge', async ({ 
 });
 
 test('holding ArrowRight long enough clamps the ship to the right edge', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
   const { gameWidth } = await page.evaluate(() => ({ gameWidth: window.GameState.GAME_WIDTH }));
 
   await page.keyboard.down('ArrowRight');
@@ -99,7 +100,7 @@ test('holding ArrowRight long enough clamps the ship to the right edge', async (
 });
 
 test('holding ArrowUp long enough clamps the ship to the top edge', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
 
   await page.keyboard.down('ArrowUp');
   await expect.poll(async () => (await getPlayer(page)).y, { timeout: 10000 }).toBe(0);
@@ -107,7 +108,7 @@ test('holding ArrowUp long enough clamps the ship to the top edge', async ({ pag
 });
 
 test('holding ArrowDown long enough clamps the ship to the bottom edge', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
   const { gameHeight } = await page.evaluate(() => ({ gameHeight: window.GameState.GAME_HEIGHT }));
 
   await page.keyboard.down('ArrowDown');

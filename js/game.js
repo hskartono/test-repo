@@ -9,7 +9,11 @@
 
   const gameOverScreen = document.getElementById('game-over-screen');
   const finalScoreEl = document.getElementById('final-score');
-  const restartButton = document.getElementById('restart-button');
+
+  const splashScreen = document.getElementById('splash-screen');
+  const splashIntroEl = document.getElementById('splash-intro');
+  const splashTitleEl = document.getElementById('splash-title');
+  const startButton = document.getElementById('start-button');
 
   window.Assets.loadAll(document);
 
@@ -28,11 +32,80 @@
 
   window.addEventListener('keydown', () => window.Sfx.unlock(), { once: true });
 
+  let splashIntroTimer = null;
+  let splashFadeTimer = null;
+  let gameOverReturnTimer = null;
+
+  function clearSplashTimers() {
+    clearTimeout(splashIntroTimer);
+    clearTimeout(splashFadeTimer);
+  }
+
+  const splashState = window.Splash.createSplashState();
+  window.__splashState = splashState;
+
+  function revealSplashTitle() {
+    splashState.phase = window.Splash.PHASES.TITLE;
+    splashIntroEl.classList.add('hidden');
+    splashIntroEl.classList.remove('fade-out');
+    splashTitleEl.classList.remove('hidden');
+    // Force a reflow before re-adding the animation class so the pop-in
+    // animation replays every time the title is shown (e.g. after a
+    // game-over return), not just the first time this page loaded.
+    splashTitleEl.classList.remove('title-animate');
+    void splashTitleEl.offsetWidth;
+    splashTitleEl.classList.add('title-animate');
+    // NOTE: this fires with no preceding user gesture on the very first,
+    // automatic intro->title transition, so browser autoplay policy leaves
+    // the AudioContext suspended and the fanfare is silent that one time
+    // (see Sfx.unlock()/the keydown-once listener below). It plays normally
+    // on every later title reveal (e.g. after a game-over return), since the
+    // player has already interacted with the page by then. This is an
+    // inherent browser limitation, not something fixable from here.
+    window.Sfx.play('title');
+  }
+
+  function showSplashTitle() {
+    splashIntroEl.classList.add('fade-out');
+    splashFadeTimer = setTimeout(revealSplashTitle, window.Splash.FADE_DURATION_MS);
+  }
+
+  function showSplashIntro() {
+    clearSplashTimers();
+    splashState.phase = window.Splash.PHASES.INTRO;
+    splashScreen.classList.remove('hidden');
+    splashIntroEl.classList.remove('hidden', 'fade-out');
+    splashTitleEl.classList.remove('title-animate');
+    splashTitleEl.classList.add('hidden');
+    splashIntroTimer = setTimeout(showSplashTitle, window.Splash.INTRO_DURATION_MS);
+  }
+
+  // Test-only hook: specs that aren't exercising the splash screen itself use
+  // this to jump straight to the title/Start button instead of waiting out
+  // the real intro/fade timers on every test's setup.
+  window.__forceSplashTitle = function () {
+    clearSplashTimers();
+    revealSplashTitle();
+  };
+
+  function returnToSplashAfterGameOver() {
+    clearTimeout(gameOverReturnTimer);
+    gameOverScreen.classList.add('hidden');
+    showSplashIntro();
+  }
+
   function triggerGameOver() {
     gameState.running = false;
     finalScoreEl.textContent = `Score: ${gameState.score}`;
     gameOverScreen.classList.remove('hidden');
+    clearTimeout(gameOverReturnTimer);
+    gameOverReturnTimer = setTimeout(returnToSplashAfterGameOver, window.Splash.GAME_OVER_RETURN_DELAY_MS);
   }
+
+  // Test-only hook: skips the real GAME_OVER_RETURN_DELAY_MS wait so specs
+  // that aren't exercising splash timing can reach the "play again" flow
+  // immediately.
+  window.__forceGameOverReturn = returnToSplashAfterGameOver;
 
   function resetGame() {
     gameState.player = window.Player.createPlayer(GAME_WIDTH, GAME_HEIGHT);
@@ -46,10 +119,15 @@
     gameState.lastTimestamp = null;
     gameState.running = true;
     gameOverScreen.classList.add('hidden');
-    requestAnimationFrame(render);
   }
 
-  restartButton.addEventListener('click', resetGame);
+  startButton.addEventListener('click', () => {
+    window.Sfx.unlock();
+    clearTimeout(gameOverReturnTimer);
+    resetGame();
+    splashScreen.classList.add('hidden');
+    requestAnimationFrame(render);
+  });
 
   function resizeCanvasToFit() {
     const layout = computeCanvasLayout(window.innerWidth, window.innerHeight, GAME_WIDTH, GAME_HEIGHT);
@@ -250,5 +328,5 @@
 
   window.addEventListener('resize', resizeCanvasToFit);
   resizeCanvasToFit();
-  requestAnimationFrame(render);
+  showSplashIntro();
 })();

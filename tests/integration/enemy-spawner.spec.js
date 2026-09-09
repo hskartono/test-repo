@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
+import { gotoAndStart } from '../helpers/start-game.js';
 
 test('enemies spawn into the game state after a short wait', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
   await page.waitForTimeout(1000);
 
   const count = await page.evaluate(() => window.__gameState.enemies.length);
@@ -9,7 +10,7 @@ test('enemies spawn into the game state after a short wait', async ({ page }) =>
 });
 
 test('enemies spawn at varying x positions over time', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
   await page.waitForTimeout(3000);
 
   const xs = await page.evaluate(() => window.__gameState.enemies.map((e) => e.x));
@@ -19,7 +20,7 @@ test('enemies spawn at varying x positions over time', async ({ page }) => {
 });
 
 test('enemies present at any sampled moment stay within the expected vertical range', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
   await page.waitForTimeout(2000);
 
   const { enemies, gameHeight } = await page.evaluate(() => ({

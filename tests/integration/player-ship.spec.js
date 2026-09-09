@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
+import { gotoAndStart } from '../helpers/start-game.js';
 
 test('exposes a player object with the expected shape', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
   const player = await page.evaluate(() => window.__gameState.player);
   expect(player).toHaveProperty('x');
   expect(player).toHaveProperty('y');
@@ -13,7 +14,7 @@ test('exposes a player object with the expected shape', async ({ page }) => {
 });
 
 test('initial player position is horizontally centered and within canvas bounds', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
   const { player, gameWidth, gameHeight } = await page.evaluate(() => ({
     player: window.__gameState.player,
     gameWidth: window.GameState.GAME_WIDTH,
@@ -28,7 +29,7 @@ test('initial player position is horizontally centered and within canvas bounds'
 });
 
 test('the ship is actually drawn at its initial position', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
   await page.waitForTimeout(100);
 
   const pixel = await page.evaluate(() => {

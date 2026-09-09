@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoAndStart } from '../helpers/start-game.js';
 
 async function fireOnce(page) {
   await page.keyboard.down('Space');
@@ -7,7 +8,7 @@ async function fireOnce(page) {
 }
 
 test('the background scrolls continuously during play', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
 
   const readings = [];
   for (let i = 0; i < 3; i += 1) {
@@ -20,7 +21,7 @@ test('the background scrolls continuously during play', async ({ page }) => {
 });
 
 test('a planet eventually scrolls through and later leaves the screen', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
 
   // Force a spawn almost immediately instead of waiting out the real 8-15s
   // window. The spawner already picked and cached its first interval (from
@@ -57,7 +58,7 @@ test('firing plays the shoot sound and a kill plays the explosion sound', async 
     if (msg.type() === 'error') errors.push(msg.text());
   });
 
-  await page.goto('/');
+  await gotoAndStart(page);
 
   const player = await page.evaluate(() => window.__gameState.player);
   const enemyX = player.x + player.width / 2;

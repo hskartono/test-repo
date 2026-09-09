@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
+import { gotoAndStart } from '../helpers/start-game.js';
 
 test('an overlapping seeded bullet and enemy are both removed and score increments', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
 
   await page.evaluate(() => {
     window.__gameState.bullets = [{ x: 100, y: 100, width: 4, height: 12, speed: 480 }];
@@ -21,7 +22,7 @@ test('an overlapping seeded bullet and enemy are both removed and score incremen
 });
 
 test('a non-overlapping seeded bullet and enemy both survive and score is unchanged', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
 
   await page.evaluate(() => {
     window.__gameState.bullets = [{ x: 10, y: 300, width: 4, height: 12, speed: 480 }];
@@ -41,7 +42,7 @@ test('a non-overlapping seeded bullet and enemy both survive and score is unchan
 });
 
 test('an enemy overlapping the player is removed without affecting score', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
 
   await page.evaluate(() => {
     const player = window.__gameState.player;
@@ -59,7 +60,7 @@ test('an enemy overlapping the player is removed without affecting score', async
 });
 
 test('the score overlay is actually drawn on the canvas', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
 
   await page.evaluate(() => {
     window.__gameState.bullets = [{ x: 100, y: 100, width: 4, height: 12, speed: 480 }];

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoAndStart } from '../helpers/start-game.js';
 
 // Match the down/wait/up pattern used in shooting.spec.js rather than the
 // keyboard.press() shorthand: shooting is edge-triggered off a rising `shoot` flag
@@ -11,7 +12,7 @@ async function fireOnce(page) {
 }
 
 test('shooting an enemy removes both the bullet and the enemy and increases the visible score', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
 
   const player = await page.evaluate(() => window.__gameState.player);
   const enemyX = player.x + player.width / 2;
@@ -41,7 +42,7 @@ test('shooting an enemy removes both the bullet and the enemy and increases the 
 });
 
 test('the score overlay updates on-screen after a kill', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
 
   const blankPixels = await page.evaluate(() => {
     const canvas = document.getElementById('game');
@@ -71,7 +72,7 @@ test('the score overlay updates on-screen after a kill', async ({ page }) => {
 });
 
 test('the player ship colliding with an enemy removes that enemy', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
 
   await page.evaluate(() => {
     const player = window.__gameState.player;
@@ -92,7 +93,7 @@ test('a normal play session with organic spawns, movement, and firing runs witho
     if (msg.type() === 'error') errors.push(msg.text());
   });
 
-  await page.goto('/');
+  await gotoAndStart(page);
 
   await page.keyboard.down('ArrowLeft');
   for (let i = 0; i < 5; i += 1) {

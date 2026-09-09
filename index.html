@@ -8,11 +8,22 @@
 </head>
 <body>
   <canvas id="game"></canvas>
+  <div id="splash-screen">
+    <div class="splash-panel">
+      <div id="splash-intro" class="splash-stage">
+        <img class="claude-logo" src="assets/images/claude-logo.svg" alt="Claude logo" />
+        <p class="made-with">Made using Claude Code</p>
+      </div>
+      <div id="splash-title" class="splash-stage hidden">
+        <h1 class="game-title">Galactic Wars</h1>
+        <button id="start-button" type="button">Start</button>
+      </div>
+    </div>
+  </div>
   <div id="game-over-screen" class="hidden">
     <div class="game-over-panel">
       <h1>Game Over</h1>
       <p id="final-score">Score: 0</p>
-      <button id="restart-button" type="button">Restart</button>
     </div>
   </div>
   <script src="js/gameState.js"></script>
@@ -26,6 +37,7 @@
   <script src="js/explosions.js"></script>
   <script src="js/background.js"></script>
   <script src="js/gameOver.js"></script>
+  <script src="js/splash.js"></script>
   <script src="js/game.js"></script>
 </body>
 </html>

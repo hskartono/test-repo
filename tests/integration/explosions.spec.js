@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoAndStart } from '../helpers/start-game.js';
 
 async function fireOnce(page) {
   await page.keyboard.down('Space');
@@ -12,7 +13,7 @@ async function fireOnce(page) {
 }
 
 test('a bullet-enemy collision spawns an explosion that later clears itself', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
 
   const player = await page.evaluate(() => window.__gameState.player);
   const enemyX = player.x + player.width / 2;
@@ -32,7 +33,7 @@ test('a bullet-enemy collision spawns an explosion that later clears itself', as
 });
 
 test('a lethal player-enemy collision spawns an explosion at the player position', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
 
   await page.evaluate(() => {
     window.__gameState.lives = 1;

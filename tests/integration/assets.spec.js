@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoAndStart } from '../helpers/start-game.js';
 
 test('all declared sprite/audio assets resolve with a 200 response', async ({ page }) => {
   const failedAssetRequests = [];
@@ -8,7 +9,7 @@ test('all declared sprite/audio assets resolve with a 200 response', async ({ pa
     }
   });
 
-  await page.goto('/');
+  await gotoAndStart(page);
   await expect
     .poll(() => page.evaluate(() => window.Assets.isReady()), { timeout: 2000 })
     .toBe(true);
@@ -17,7 +18,7 @@ test('all declared sprite/audio assets resolve with a 200 response', async ({ pa
 });
 
 test('the player, enemy, and bullet sprites are usable after loading', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
   await expect
     .poll(() => page.evaluate(() => window.Assets.isReady()), { timeout: 2000 })
     .toBe(true);
