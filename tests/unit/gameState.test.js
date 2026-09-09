@@ -7,7 +7,7 @@ const { createGameState, computeCanvasLayout } = globalThis.GameState;
 
 test('createGameState returns the expected default shape', () => {
   const state = createGameState();
-  assert.deepEqual(state, { running: true, lastTimestamp: null });
+  assert.deepEqual(state, { running: true, lastTimestamp: null, enemies: [], timeSinceLastSpawn: 0 });
 });
 
 test('computeCanvasLayout letterboxes left/right when viewport is wider than the aspect ratio', () => {
