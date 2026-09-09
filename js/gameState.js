@@ -6,6 +6,8 @@
     return {
       running: true,
       lastTimestamp: null,
+      enemies: [],
+      timeSinceLastSpawn: 0,
     };
   }
 

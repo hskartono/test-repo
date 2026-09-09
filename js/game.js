@@ -22,11 +22,31 @@
   function render(timestamp) {
     if (!gameState.running) return;
 
+    const deltaMs = gameState.lastTimestamp === null ? 0 : timestamp - gameState.lastTimestamp;
     gameState.lastTimestamp = timestamp;
+
+    // Move existing enemies by this frame's delta first, then spawn new ones -
+    // otherwise a large catch-up delta (e.g. after the tab was backgrounded)
+    // would immediately move freshly spawned enemies off-screen in the same tick.
+    gameState.enemies = window.Enemies.updateEnemies(gameState.enemies, deltaMs, window.Enemies.ENEMY_SPEED, GAME_HEIGHT);
+    window.Enemies.stepEnemySpawner(
+      gameState,
+      deltaMs,
+      window.Enemies.SPAWN_INTERVAL_MS,
+      GAME_WIDTH,
+      window.Enemies.ENEMY_RADIUS
+    );
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = 'red';
+    for (const enemy of gameState.enemies) {
+      ctx.beginPath();
+      ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     window.__frameCount += 1;
     requestAnimationFrame(render);
