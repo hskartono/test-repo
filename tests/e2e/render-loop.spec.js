@@ -1,9 +1,13 @@
 import { test, expect } from '@playwright/test';
 
-test('opening the page shows a solid black canvas', async ({ page }) => {
+test('opening the page shows an opaque canvas covered by the scrolling background', async ({ page }) => {
   await page.goto('/');
   await page.waitForTimeout(100);
 
+  // The background is now a tiled starfield sprite rather than a flat fill, so
+  // exact RGB values vary by sample point (stars vs. empty space). Every point
+  // should still be fully opaque (alpha 255), confirming the canvas was
+  // actually painted rather than left blank/transparent.
   const pixels = await page.evaluate(() => {
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
@@ -18,7 +22,7 @@ test('opening the page shows a solid black canvas', async ({ page }) => {
   });
 
   for (const pixel of pixels) {
-    expect(pixel).toEqual([0, 0, 0, 255]);
+    expect(pixel[3]).toBe(255);
   }
 });
 
@@ -47,7 +51,7 @@ test('the render loop runs continuously rather than a single frame', async ({ pa
   expect(second).toBeGreaterThan(first);
 });
 
-test('resizing the viewport mid-run does not throw and the canvas stays black', async ({ page }) => {
+test('resizing the viewport mid-run does not throw and the canvas stays opaque', async ({ page }) => {
   const pageErrors = [];
   page.on('pageerror', (err) => pageErrors.push(err));
 
@@ -65,6 +69,6 @@ test('resizing the viewport mid-run does not throw and the canvas stays black', 
     return Array.from(ctx.getImageData(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2), 1, 1).data);
   });
 
-  expect(pixel).toEqual([0, 0, 0, 255]);
+  expect(pixel[3]).toBe(255);
   expect(pageErrors).toHaveLength(0);
 });

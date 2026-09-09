@@ -3,7 +3,12 @@ import assert from 'node:assert/strict';
 
 globalThis.window = globalThis;
 await import('../../js/collisions.js');
-const { intersects, resolveBulletEnemyCollisions, resolvePlayerEnemyCollisions } = globalThis.Collisions;
+const {
+  intersects,
+  resolveBulletEnemyCollisions,
+  resolvePlayerEnemyCollisions,
+  shouldResolvePlayerCollision,
+} = globalThis.Collisions;
 
 test('intersects is true for overlapping rects and false when clearly separated', () => {
   const a = { x: 0, y: 0, width: 10, height: 10 };
@@ -78,6 +83,23 @@ test('resolveBulletEnemyCollisions does not mutate its input arrays', () => {
   resolveBulletEnemyCollisions(bullets, enemies);
   assert.equal(bullets.length, 1);
   assert.equal(enemies.length, 1);
+});
+
+test('resolveBulletEnemyCollisions reports the destroyed enemies for spawning explosions', () => {
+  const bullets = [{ x: 100, y: 100, width: 4, height: 12 }];
+  const enemies = [
+    { x: 100, y: 105, radius: 15 },
+    { x: 400, y: 400, radius: 15 },
+  ];
+  const result = resolveBulletEnemyCollisions(bullets, enemies);
+  assert.equal(result.destroyedEnemies.length, 1);
+  assert.equal(result.destroyedEnemies[0].x, 100);
+  assert.equal(result.destroyedEnemies[0].y, 105);
+});
+
+test('shouldResolvePlayerCollision is false while the player is invulnerable and true otherwise', () => {
+  assert.equal(shouldResolvePlayerCollision({ invulnerable: true }), false);
+  assert.equal(shouldResolvePlayerCollision({ invulnerable: false }), true);
 });
 
 test('resolvePlayerEnemyCollisions removes an enemy overlapping the player and reports hit true', () => {

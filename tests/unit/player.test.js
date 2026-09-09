@@ -3,7 +3,15 @@ import assert from 'node:assert/strict';
 
 globalThis.window = globalThis;
 await import('../../js/player.js');
-const { createPlayer, clampPlayer, movePlayer } = globalThis.Player;
+const {
+  createPlayer,
+  clampPlayer,
+  movePlayer,
+  respawnPlayer,
+  updateInvulnerability,
+  INVULNERABILITY_DURATION_MS,
+  BLINK_INTERVAL_MS,
+} = globalThis.Player;
 
 const GAME_WIDTH = 480;
 const GAME_HEIGHT = 640;
@@ -14,6 +22,52 @@ test('createPlayer spawns horizontally centered and within bounds near the botto
   assert.ok(player.x >= 0 && player.x + player.width <= GAME_WIDTH);
   assert.ok(player.y >= 0 && player.y + player.height <= GAME_HEIGHT);
   assert.ok(player.y + player.height < GAME_HEIGHT, 'ship should not touch the very bottom edge');
+});
+
+test('createPlayer starts not invulnerable and visible', () => {
+  const player = createPlayer(GAME_WIDTH, GAME_HEIGHT);
+  assert.equal(player.invulnerable, false);
+  assert.equal(player.blinkVisible, true);
+});
+
+test('respawnPlayer places the ship back at the bottom-center spawn point and marks it invulnerable', () => {
+  const player = respawnPlayer(GAME_WIDTH, GAME_HEIGHT);
+  const fresh = createPlayer(GAME_WIDTH, GAME_HEIGHT);
+  assert.equal(player.x, fresh.x);
+  assert.equal(player.y, fresh.y);
+  assert.equal(player.invulnerable, true);
+  assert.equal(player.invulnerableElapsedMs, 0);
+});
+
+test('updateInvulnerability leaves invulnerable true just before the duration threshold', () => {
+  const player = respawnPlayer(GAME_WIDTH, GAME_HEIGHT);
+  const updated = updateInvulnerability(player, INVULNERABILITY_DURATION_MS - 1);
+  assert.equal(updated.invulnerable, true);
+});
+
+test('updateInvulnerability clears invulnerable once the duration has elapsed', () => {
+  const player = respawnPlayer(GAME_WIDTH, GAME_HEIGHT);
+  const updated = updateInvulnerability(player, INVULNERABILITY_DURATION_MS);
+  assert.equal(updated.invulnerable, false);
+  assert.equal(updated.blinkVisible, true);
+});
+
+test('updateInvulnerability is a no-op when the player is not invulnerable', () => {
+  const player = createPlayer(GAME_WIDTH, GAME_HEIGHT);
+  const updated = updateInvulnerability(player, 500);
+  assert.equal(updated, player);
+});
+
+test('updateInvulnerability toggles blinkVisible deterministically at the blink interval', () => {
+  const player = respawnPlayer(GAME_WIDTH, GAME_HEIGHT);
+  const onFrame = updateInvulnerability(player, 0);
+  assert.equal(onFrame.blinkVisible, true);
+
+  const offFrame = updateInvulnerability(player, BLINK_INTERVAL_MS);
+  assert.equal(offFrame.blinkVisible, false);
+
+  const onAgain = updateInvulnerability(player, BLINK_INTERVAL_MS * 2);
+  assert.equal(onAgain.blinkVisible, true);
 });
 
 test('clampPlayer pulls a negative x up to 0', () => {

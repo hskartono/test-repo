@@ -8,6 +8,8 @@ test('exposes a player object with the expected shape', async ({ page }) => {
   expect(player).toHaveProperty('width');
   expect(player).toHaveProperty('height');
   expect(player).toHaveProperty('speed');
+  expect(player).toHaveProperty('invulnerable', false);
+  expect(player).toHaveProperty('blinkVisible', true);
 });
 
 test('initial player position is horizontally centered and within canvas bounds', async ({ page }) => {
