@@ -70,15 +70,18 @@ test('holding ArrowUp/KeyW moves up and ArrowDown/KeyS moves down', async ({ pag
   expect(afterDown.y).toBeGreaterThan(afterUp.y);
 });
 
+// These four "held long enough" tests poll for the clamp instead of gambling
+// a fixed waitForTimeout against a fixed expected travel distance: sprite/
+// background rendering added more per-frame canvas work, and a busy machine
+// can stall the frame loop by an unpredictable amount, so any fixed wall-clock
+// budget is inherently flaky. Polling just needs a ceiling generous enough to
+// notice a truly broken clamp, not to match the exact simulated travel time.
 test('holding ArrowLeft long enough clamps the ship to the left edge', async ({ page }) => {
   await page.goto('/');
 
   await page.keyboard.down('ArrowLeft');
-  await page.waitForTimeout(2000);
+  await expect.poll(async () => (await getPlayer(page)).x, { timeout: 10000 }).toBe(0);
   await page.keyboard.up('ArrowLeft');
-
-  const player = await getPlayer(page);
-  expect(player.x).toBe(0);
 
   await page.waitForTimeout(100);
   const stillClamped = await getPlayer(page);
@@ -90,22 +93,17 @@ test('holding ArrowRight long enough clamps the ship to the right edge', async (
   const { gameWidth } = await page.evaluate(() => ({ gameWidth: window.GameState.GAME_WIDTH }));
 
   await page.keyboard.down('ArrowRight');
-  await page.waitForTimeout(2000);
-  await page.keyboard.up('ArrowRight');
-
   const player = await getPlayer(page);
-  expect(player.x).toBe(gameWidth - player.width);
+  await expect.poll(async () => (await getPlayer(page)).x, { timeout: 10000 }).toBe(gameWidth - player.width);
+  await page.keyboard.up('ArrowRight');
 });
 
 test('holding ArrowUp long enough clamps the ship to the top edge', async ({ page }) => {
   await page.goto('/');
 
   await page.keyboard.down('ArrowUp');
-  await page.waitForTimeout(3000);
+  await expect.poll(async () => (await getPlayer(page)).y, { timeout: 10000 }).toBe(0);
   await page.keyboard.up('ArrowUp');
-
-  const player = await getPlayer(page);
-  expect(player.y).toBe(0);
 });
 
 test('holding ArrowDown long enough clamps the ship to the bottom edge', async ({ page }) => {
@@ -113,9 +111,7 @@ test('holding ArrowDown long enough clamps the ship to the bottom edge', async (
   const { gameHeight } = await page.evaluate(() => ({ gameHeight: window.GameState.GAME_HEIGHT }));
 
   await page.keyboard.down('ArrowDown');
-  await page.waitForTimeout(3000);
-  await page.keyboard.up('ArrowDown');
-
   const player = await getPlayer(page);
-  expect(player.y).toBe(gameHeight - player.height);
+  await expect.poll(async () => (await getPlayer(page)).y, { timeout: 10000 }).toBe(gameHeight - player.height);
+  await page.keyboard.up('ArrowDown');
 });

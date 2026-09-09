@@ -8,6 +8,10 @@ async function fireOnce(page) {
 
 async function collideWithEnemy(page) {
   await page.evaluate(() => {
+    // Force-clear invulnerability so each call in a rapid sequence still lands a
+    // hit - respawn now grants a temporary invulnerability window that would
+    // otherwise absorb these back-to-back forced collisions.
+    window.__gameState.player.invulnerable = false;
     const player = window.__gameState.player;
     window.__gameState.enemies = [
       { x: player.x + player.width / 2, y: player.y + player.height / 2, radius: 15 },

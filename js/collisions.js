@@ -34,6 +34,7 @@
     return {
       bullets: bullets.filter((_, index) => !hitBulletIndices.has(index)),
       enemies: enemies.filter((_, index) => !hitEnemyIndices.has(index)),
+      destroyedEnemies: enemies.filter((_, index) => hitEnemyIndices.has(index)),
       hits: hitEnemyIndices.size,
     };
   }
@@ -43,11 +44,16 @@
     return { enemies: survivors, hit: survivors.length !== enemies.length };
   }
 
+  function shouldResolvePlayerCollision(player) {
+    return !player.invulnerable;
+  }
+
   global.Collisions = {
     boundingBoxOf,
     boxesIntersect,
     intersects,
     resolveBulletEnemyCollisions,
     resolvePlayerEnemyCollisions,
+    shouldResolvePlayerCollision,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
