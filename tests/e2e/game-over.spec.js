@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoAndStart } from '../helpers/start-game.js';
 
 async function fireOnce(page) {
   await page.keyboard.down('Space');
@@ -21,7 +22,7 @@ async function collideWithEnemy(page) {
 }
 
 test('losing all 3 lives to sequential collisions shows the Game Over screen with the final score', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
 
   const player = await page.evaluate(() => window.__gameState.player);
   const enemyX = player.x + player.width / 2;
@@ -45,8 +46,10 @@ test('losing all 3 lives to sequential collisions shows the Game Over screen wit
   await expect(page.locator('#final-score')).toHaveText('Score: 1');
 });
 
-test('clicking Restart after game over lets play continue normally', async ({ page }) => {
-  await page.goto('/');
+test('a few seconds after game over, the splash screen automatically reappears with the title and clicking Start lets play continue normally', async ({
+  page,
+}) => {
+  await gotoAndStart(page);
 
   await collideWithEnemy(page);
   await collideWithEnemy(page);
@@ -56,9 +59,18 @@ test('clicking Restart after game over lets play continue normally', async ({ pa
     .poll(() => page.evaluate(() => window.__gameState.running), { timeout: 1000 })
     .toBe(false);
 
-  await page.click('#restart-button');
-
+  // Skip the real GAME_OVER_RETURN_DELAY_MS/INTRO_DURATION_MS waits - the real
+  // timings are covered by tests/e2e/splash-screen.spec.js; this test is about
+  // the resulting play-again flow.
+  await page.evaluate(() => window.__forceGameOverReturn());
   await expect(page.locator('#game-over-screen')).toBeHidden();
+  await expect(page.locator('#splash-screen')).toBeVisible();
+
+  await page.evaluate(() => window.__forceSplashTitle());
+  await expect(page.locator('#splash-title')).toBeVisible();
+
+  await page.click('#start-button');
+  await expect(page.locator('#splash-screen')).toBeHidden();
 
   const player = await page.evaluate(() => window.__gameState.player);
   const enemyX = player.x + player.width / 2;
@@ -76,19 +88,19 @@ test('clicking Restart after game over lets play continue normally', async ({ pa
     .toBe(3);
 });
 
-test('the Restart button is not visible during normal gameplay', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.locator('#restart-button')).toBeHidden();
+test('the splash screen is not visible during normal gameplay', async ({ page }) => {
+  await gotoAndStart(page);
+  await expect(page.locator('#splash-screen')).toBeHidden();
 });
 
-test('a full play, game-over, restart, and play-again cycle runs without console or page errors', async ({ page }) => {
+test('a full play, game-over, splash-return, and play-again cycle runs without console or page errors', async ({ page }) => {
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (msg) => {
     if (msg.type() === 'error') errors.push(msg.text());
   });
 
-  await page.goto('/');
+  await gotoAndStart(page);
 
   await collideWithEnemy(page);
   await collideWithEnemy(page);
@@ -98,7 +110,9 @@ test('a full play, game-over, restart, and play-again cycle runs without console
     .poll(() => page.evaluate(() => window.__gameState.running), { timeout: 1000 })
     .toBe(false);
 
-  await page.click('#restart-button');
+  await page.evaluate(() => window.__forceGameOverReturn());
+  await page.evaluate(() => window.__forceSplashTitle());
+  await page.click('#start-button');
 
   await page.keyboard.down('ArrowLeft');
   await fireOnce(page);

@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
+import { gotoAndStart } from '../helpers/start-game.js';
 
 test('enemies fall down the screen over time', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
   // Wait past one spawn interval (800ms) so an enemy is guaranteed to exist.
   await page.waitForTimeout(900);
 
@@ -14,7 +15,7 @@ test('enemies fall down the screen over time', async ({ page }) => {
 });
 
 test('enemy count stabilizes rather than growing unboundedly', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
 
   // Enemies fall for ~5.5s (640px / 120px/s, plus radius) and spawn every
   // 0.8s. During that first ~5.5s, count naturally ramps up from 0 as no
@@ -46,7 +47,7 @@ test('no console errors or page errors occur while enemies are active', async ({
   });
   page.on('pageerror', (err) => pageErrors.push(err));
 
-  await page.goto('/');
+  await gotoAndStart(page);
   await page.waitForTimeout(2000);
 
   expect(consoleErrors).toHaveLength(0);

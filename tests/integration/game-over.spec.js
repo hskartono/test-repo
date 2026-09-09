@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
+import { gotoAndStart } from '../helpers/start-game.js';
 
 test('a player-enemy collision decrements lives in addition to removing the enemy', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
 
   await page.evaluate(() => {
     const player = window.__gameState.player;
@@ -21,7 +22,7 @@ test('a player-enemy collision decrements lives in addition to removing the enem
 });
 
 test('losing the last life stops the render loop', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
 
   await page.evaluate(() => {
     window.__gameState.lives = 1;
@@ -45,7 +46,7 @@ test('losing the last life stops the render loop', async ({ page }) => {
 });
 
 test('the Game Over screen becomes visible with the final score when lives reach 0', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
 
   await page.evaluate(() => {
     window.__gameState.lives = 1;
@@ -65,7 +66,7 @@ test('the Game Over screen becomes visible with the final score when lives reach
 });
 
 test('the Game Over screen is hidden during normal play', async ({ page }) => {
-  await page.goto('/');
+  await gotoAndStart(page);
   await expect(page.locator('#game-over-screen')).toBeHidden();
 
   await page.evaluate(() => {
@@ -79,8 +80,33 @@ test('the Game Over screen is hidden during normal play', async ({ page }) => {
   await expect(page.locator('#game-over-screen')).toBeHidden();
 });
 
-test('clicking Restart after game over resets score, lives, enemies, bullets, and player position', async ({ page }) => {
-  await page.goto('/');
+test('a few seconds after game over, the splash screen reappears with the title', async ({ page }) => {
+  await gotoAndStart(page);
+
+  await page.evaluate(() => {
+    window.__gameState.lives = 1;
+    const player = window.__gameState.player;
+    window.__gameState.enemies = [
+      { x: player.x + player.width / 2, y: player.y + player.height / 2, radius: 15 },
+    ];
+  });
+
+  await expect(page.locator('#game-over-screen')).toBeVisible();
+
+  // Skip the real GAME_OVER_RETURN_DELAY_MS wait - this test is about what
+  // happens on return, not how long it takes to get there (timing itself is
+  // covered by the e2e splash-screen spec).
+  await page.evaluate(() => window.__forceGameOverReturn());
+
+  await expect(page.locator('#game-over-screen')).toBeHidden();
+  await expect(page.locator('#splash-screen')).toBeVisible();
+  await expect(page.locator('#splash-intro')).toBeVisible();
+});
+
+test('clicking Start after the splash screen returns from game over resets score, lives, enemies, bullets, and player position', async ({
+  page,
+}) => {
+  await gotoAndStart(page);
 
   const initialPlayer = await page.evaluate(() => window.__gameState.player);
 
@@ -106,7 +132,9 @@ test('clicking Restart after game over resets score, lives, enemies, bullets, an
     .poll(() => page.evaluate(() => window.__gameState.running), { timeout: 1000 })
     .toBe(false);
 
-  await page.click('#restart-button');
+  await page.evaluate(() => window.__forceGameOverReturn());
+  await page.evaluate(() => window.__forceSplashTitle());
+  await page.click('#start-button');
 
   const state = await page.evaluate(() => ({
     score: window.__gameState.score,
@@ -124,10 +152,11 @@ test('clicking Restart after game over resets score, lives, enemies, bullets, an
   expect(state.running).toBe(true);
   expect(state.player).toEqual(initialPlayer);
   await expect(page.locator('#game-over-screen')).toBeHidden();
+  await expect(page.locator('#splash-screen')).toBeHidden();
 });
 
-test('after restart the render loop resumes advancing frames', async ({ page }) => {
-  await page.goto('/');
+test('after restarting from the splash screen the render loop resumes advancing frames', async ({ page }) => {
+  await gotoAndStart(page);
 
   await page.evaluate(() => {
     window.__gameState.lives = 1;
@@ -141,7 +170,9 @@ test('after restart the render loop resumes advancing frames', async ({ page }) 
     .poll(() => page.evaluate(() => window.__gameState.running), { timeout: 1000 })
     .toBe(false);
 
-  await page.click('#restart-button');
+  await page.evaluate(() => window.__forceGameOverReturn());
+  await page.evaluate(() => window.__forceSplashTitle());
+  await page.click('#start-button');
 
   const first = await page.evaluate(() => window.__frameCount);
   await page.waitForTimeout(200);
