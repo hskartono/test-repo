@@ -7,15 +7,41 @@
   canvas.width = GAME_WIDTH;
   canvas.height = GAME_HEIGHT;
 
+  const gameOverScreen = document.getElementById('game-over-screen');
+  const finalScoreEl = document.getElementById('final-score');
+  const restartButton = document.getElementById('restart-button');
+
   const gameState = createGameState();
   gameState.player = window.Player.createPlayer(GAME_WIDTH, GAME_HEIGHT);
   gameState.bullets = [];
   gameState.score = 0;
+  gameState.lives = window.GameOver.STARTING_LIVES;
   window.__gameState = gameState;
   window.__frameCount = 0;
 
   const input = window.InputState.createKeyboardInput();
   let shootHeldLastFrame = false;
+
+  function triggerGameOver() {
+    gameState.running = false;
+    finalScoreEl.textContent = `Score: ${gameState.score}`;
+    gameOverScreen.classList.remove('hidden');
+  }
+
+  function resetGame() {
+    gameState.player = window.Player.createPlayer(GAME_WIDTH, GAME_HEIGHT);
+    gameState.bullets = [];
+    gameState.enemies = [];
+    gameState.score = 0;
+    gameState.lives = window.GameOver.STARTING_LIVES;
+    gameState.timeSinceLastSpawn = 0;
+    gameState.lastTimestamp = null;
+    gameState.running = true;
+    gameOverScreen.classList.add('hidden');
+    requestAnimationFrame(render);
+  }
+
+  restartButton.addEventListener('click', resetGame);
 
   function resizeCanvasToFit() {
     const layout = computeCanvasLayout(window.innerWidth, window.innerHeight, GAME_WIDTH, GAME_HEIGHT);
@@ -48,6 +74,13 @@
     ctx.font = '20px sans-serif';
     ctx.textBaseline = 'top';
     ctx.fillText(`Score: ${score}`, 10, 10);
+  }
+
+  function drawLives(lives) {
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '20px sans-serif';
+    ctx.textBaseline = 'top';
+    ctx.fillText(`Lives: ${lives}`, 10, 34);
   }
 
   function render(timestamp) {
@@ -85,6 +118,14 @@
     const playerHit = window.Collisions.resolvePlayerEnemyCollisions(gameState.player, gameState.enemies);
     gameState.enemies = playerHit.enemies;
 
+    if (playerHit.hit) {
+      const livesResult = window.GameOver.applyLivesLoss(gameState.lives);
+      gameState.lives = livesResult.lives;
+      if (livesResult.gameOver) {
+        triggerGameOver();
+      }
+    }
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -99,9 +140,12 @@
     }
 
     drawScore(gameState.score);
+    drawLives(gameState.lives);
 
     window.__frameCount += 1;
-    requestAnimationFrame(render);
+    if (gameState.running) {
+      requestAnimationFrame(render);
+    }
   }
 
   window.addEventListener('resize', resizeCanvasToFit);
