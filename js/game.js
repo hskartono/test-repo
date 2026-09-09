@@ -24,11 +24,13 @@
   gameState.lives = window.GameOver.STARTING_LIVES;
   gameState.explosions = [];
   gameState.background = window.Background.createBackgroundState();
+  gameState.bomb = window.Bomb.createBombState();
   window.__gameState = gameState;
   window.__frameCount = 0;
 
   const input = window.InputState.createKeyboardInput();
   let shootHeldLastFrame = false;
+  let bombHeldLastFrame = false;
 
   window.addEventListener('keydown', () => window.Sfx.unlock(), { once: true });
 
@@ -115,6 +117,7 @@
     gameState.lives = window.GameOver.STARTING_LIVES;
     gameState.explosions = [];
     gameState.background = window.Background.createBackgroundState();
+    gameState.bomb = window.Bomb.createBombState();
     gameState.timeSinceLastSpawn = 0;
     gameState.lastTimestamp = null;
     gameState.running = true;
@@ -219,6 +222,13 @@
     ctx.fillText(`Lives: ${lives}`, 10, 34);
   }
 
+  function drawBombs(bombCount) {
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '20px sans-serif';
+    ctx.textBaseline = 'top';
+    ctx.fillText(`Bombs: ${bombCount}`, 10, 58);
+  }
+
   function render(timestamp) {
     if (!gameState.running) return;
 
@@ -276,6 +286,24 @@
       gameState.explosions.push(window.Explosions.spawnExplosion(enemy.x, enemy.y));
       window.Sfx.play('explosion');
     });
+    gameState.bomb = window.Bomb.awardBombsForKills(gameState.bomb, bulletHits.hits);
+
+    if (window.Bomb.shouldLaunchBomb(input.bomb, bombHeldLastFrame)) {
+      const launch = window.Bomb.launchBomb(gameState.bomb);
+      gameState.bomb = launch.bombState;
+      if (launch.launched) {
+        const detonation = window.Bomb.detonateBomb(gameState.enemies, gameState.bullets);
+        gameState.enemies = detonation.enemies;
+        gameState.bullets = detonation.bullets;
+        detonation.destroyedEnemies.forEach((enemy) => {
+          gameState.explosions.push(window.Explosions.spawnExplosion(enemy.x, enemy.y));
+        });
+        if (detonation.destroyedEnemies.length > 0) {
+          window.Sfx.play('explosion');
+        }
+      }
+    }
+    bombHeldLastFrame = input.bomb;
 
     if (window.Collisions.shouldResolvePlayerCollision(gameState.player)) {
       const playerHit = window.Collisions.resolvePlayerEnemyCollisions(gameState.player, gameState.enemies);
@@ -319,6 +347,7 @@
 
     drawScore(gameState.score);
     drawLives(gameState.lives);
+    drawBombs(gameState.bomb.count);
 
     window.__frameCount += 1;
     if (gameState.running) {
