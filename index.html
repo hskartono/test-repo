@@ -8,12 +8,20 @@
 </head>
 <body>
   <canvas id="game"></canvas>
+  <div id="game-over-screen" class="hidden">
+    <div class="game-over-panel">
+      <h1>Game Over</h1>
+      <p id="final-score">Score: 0</p>
+      <button id="restart-button" type="button">Restart</button>
+    </div>
+  </div>
   <script src="js/gameState.js"></script>
   <script src="js/player.js"></script>
   <script src="js/bullets.js"></script>
   <script src="js/input.js"></script>
   <script src="js/enemies.js"></script>
   <script src="js/collisions.js"></script>
+  <script src="js/gameOver.js"></script>
   <script src="js/game.js"></script>
 </body>
 </html>
