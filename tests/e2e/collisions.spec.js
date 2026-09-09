@@ -31,7 +31,13 @@ test('shooting an enemy removes both the bullet and the enemy and increases the 
   }));
 
   expect(state.bullets).toHaveLength(0);
-  expect(state.enemies).toHaveLength(0);
+  // Don't assert enemies is empty outright: the game's own enemy spawner keeps
+  // running in the background and may have added a freshly-spawned enemy near
+  // the top of the screen (y close to 0) by the time we read this state. Only
+  // the seeded enemy could plausibly still be near y:300, so check that one
+  // specifically is gone rather than the array as a whole.
+  const enemiesNearSeededPosition = state.enemies.filter((enemy) => enemy.y > 100);
+  expect(enemiesNearSeededPosition).toHaveLength(0);
 });
 
 test('the score overlay updates on-screen after a kill', async ({ page }) => {
